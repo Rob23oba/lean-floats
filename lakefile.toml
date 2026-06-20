@@ -1,6 +1,6 @@
 name = "lean-floats"
 version = "0.1.0"
-defaultTargets = ["lean-floats"]
+defaultTargets = ["LeanFloats"]
 
 [[lean_lib]]
 name = "LeanFloats"
