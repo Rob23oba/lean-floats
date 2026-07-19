@@ -1,7 +1,7 @@
 module
 public import LeanFloats.RealFloats.Rounding
-public import LeanFloats.PackLemmas
-import Batteries
+
+@[expose] public section
 
 namespace LeanFloats.UnpackedFloat
 
