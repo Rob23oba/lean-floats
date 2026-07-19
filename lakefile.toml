@@ -8,4 +8,4 @@ name = "LeanFloats"
 [[require]]
 name = "mathlib4"
 git = "https://github.com/leanprover-community/mathlib4-nightly-testing"
-rev = "74eb5f141a2ca78e770ecfce90187c52f5178355"
+rev = "281cecb69a97a85be7a3ddf468c4682bd54e65fa"

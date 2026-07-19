@@ -3,6 +3,7 @@ public import Mathlib.Algebra.Order.Field.Power
 public import Mathlib.Analysis.Normed.Field.Lemmas
 public import Mathlib.Data.Int.Log
 public import Mathlib.Tactic.Rify
+public import LeanFloats.SimpleSign
 
 @[expose] public section
 
@@ -40,6 +41,8 @@ meta def Base.valuePositivityExt : PositivityExt where eval {u α} _ pα? e :=
 
 instance {n : Nat} [h : n.AtLeastTwo] : OfNat Base n where
   ofNat := ⟨n, h.prop⟩
+
+@[simp] lemma Base.value_ofNat (n : ℕ) [n.AtLeastTwo] : Base.value ofNat(n) = n := rfl
 
 structure FloatFormat (base : Base) where
   infExp : Nat
@@ -80,6 +83,39 @@ structure IsValidFloat (f : FloatFormat base) (x : ℝ) where
   isRounded : f.IsRounded x
   inRange : f.InRange x
 
+lemma IsRounded.intro_le {exp : ℤ} {mant : ℤ}
+    (hexp : f.minExp ≤ exp) (hmant : mant.natAbs ≤ base ^ f.precision) :
+    f.IsRounded (mant * base ^ exp) := by
+  by_cases hlt : mant.natAbs < base ^ f.precision
+  · use exp, mant, hexp, hlt
+  · have : mant = base ^ f.precision ∨ mant = -base ^ f.precision := by lia
+    obtain rfl | rfl := this
+    · use f.precision + exp, 1, by grind, by simp
+      simp [zpow_add₀]
+    · use f.precision + exp, -1, by grind, by simp
+      simp [zpow_add₀]
+
+lemma IsValidFloat.intro_lt {exp : ℤ} {mant : ℤ}
+    (hexp_ge : f.minExp ≤ exp) (hexp_le : exp ≤ f.infExp - f.precision)
+    (hmant : mant.natAbs < base ^ f.precision) :
+    f.IsValidFloat (mant * base ^ exp) := by
+  constructor
+  · exact .intro_le hexp_ge hmant.le
+  · constructor
+    simp only [abs_mul, ← Int.cast_abs, Int.abs_eq_natAbs, Int.cast_natCast, abs_zpow, Nat.abs_cast]
+    grw [hmant, hexp_le] <;> simp [← zpow_add₀, ← zpow_natCast]
+
+lemma isRounded_natCast {n : ℕ} (h : n ≤ base ^ f.precision) : f.IsRounded n := by
+  suffices f.IsRounded ((n : ℤ) * base ^ (0 : ℤ)) by simpa
+  exact .intro_le f.minExp_nonpos h
+
+lemma isValidFloat_natCast {n : ℕ} (h : n ≤ base ^ f.precision) : f.IsValidFloat n := by
+  constructor
+  · exact isRounded_natCast h
+  · constructor
+    grw [Nat.abs_cast, h, Nat.cast_pow, f.precision_lt_infExp]
+    simp
+
 lemma IsRounded.neg {x : ℝ} (h : f.IsRounded x) :
     f.IsRounded (-x) := by
   obtain ⟨e, i, he, hi, rfl⟩ := h
@@ -92,6 +128,27 @@ lemma InRange.neg {x : ℝ} (h : f.InRange x) :
 
 lemma IsValidFloat.neg {x : ℝ} (h : f.IsValidFloat x) :
     f.IsValidFloat (-x) := ⟨h.1.neg, h.2.neg⟩
+
+lemma IsRounded.abs {x : ℝ} (h : f.IsRounded x) : f.IsRounded |x| := by
+  grind [IsRounded.neg]
+
+lemma InRange.abs {x : ℝ} (h : f.InRange x) :
+    f.InRange |x| := by simp_all [inRange_iff]
+
+lemma IsValidFloat.abs {x : ℝ} (h : f.IsValidFloat x) :
+    f.IsValidFloat |x| := ⟨h.1.abs, h.2.abs⟩
+
+lemma IsRounded.simpleSign_mul {x : ℝ} (h : f.IsRounded x) (s : SimpleSign) :
+    f.IsRounded (s * x) := by
+  cases s <;> simp [h, h.neg]
+
+lemma IsRange.simpleSign_mul {x : ℝ} (h : f.InRange x) (s : SimpleSign) :
+    f.InRange (s * x) := by
+  cases s <;> simp [h, h.neg]
+
+lemma IsValidFloat.simpleSign_mul {x : ℝ} (h : f.IsValidFloat x) (s : SimpleSign) :
+    f.IsValidFloat (s * x) := by
+  cases s <;> simp [h, h.neg]
 
 @[simp]
 lemma isRounded_neg_iff {x : ℝ} :
@@ -153,6 +210,11 @@ lemma getExponent_neg {x : ℝ} : f.getExponent (-x) = f.getExponent x := by
 lemma getExponent_abs {x : ℝ} : f.getExponent |x| = f.getExponent x := by
   grind [getExponent]
 
+@[simp]
+lemma getExponent_simpleSign_mul {s : SimpleSign} {x : ℝ} :
+    f.getExponent (s * x) = f.getExponent x := by
+  cases s <;> simp
+
 lemma lt_getExponent_of_ge {x : ℝ} {e : ℤ} (h : base ^ (e + f.precision) ≤ |x|) :
     e < f.getExponent x := by
   rw [getExponent]
@@ -197,6 +259,10 @@ lemma IsRounded.getMantissa_mul_base_pow_getExponent {x : ℝ} (h : IsRounded f 
     ← zpow_natCast, Int.toNat_of_nonneg this, zpow_sub₀]
   field
 
+lemma IsRounded.abs_getMantissa_mul_base_pow_getExponent {x : ℝ} (h : IsRounded f x) :
+    |(f.getMantissa x : ℝ)| * base ^ f.getExponent x = |x| := by
+  simpa using congrArg (|·|) h.getMantissa_mul_base_pow_getExponent
+
 lemma IsRounded.natAbs_getMantissa_lt {x : ℝ} (h : IsRounded f x) :
     (f.getMantissa x).natAbs < base ^ f.precision := by
   rify
@@ -210,6 +276,15 @@ lemma InRange.getExponent_le {x : ℝ} (h : InRange f x) :
   apply getExponent_le_of_lt
   · simp [h.abs_lt]
   · grind
+
+lemma IsRounded.getMantissa_eq_zero_iff {x : ℝ} (h : IsRounded f x) :
+    f.getMantissa x = 0 ↔ x = 0 := by
+  constructor
+  · intro h'
+    rw [← h.getMantissa_mul_base_pow_getExponent, h']
+    simp
+  · rintro rfl
+    simp [getMantissa]
 
 noncomputable def maxValue (f : FloatFormat base) : ℝ :=
   (base ^ f.precision - 1) * base ^ (f.infExp - f.precision : ℤ)
