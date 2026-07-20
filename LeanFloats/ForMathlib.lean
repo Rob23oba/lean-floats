@@ -141,11 +141,34 @@ theorem Int.log_natCast_add_eq_natLog {R : Type*} [Semifield R] [LinearOrder R]
     exact Nat.lt_pow_succ_log_self hb a
 
 @[simp]
+theorem Nat.log2_one : (1 : Nat).log2 = 0 := rfl
+
+@[simp]
 theorem Nat.log2_shiftLeft {n m : Nat} (hn : n ≠ 0) :
     (n <<< m).log2 = n.log2 + m := by
   induction m with
   | zero => simp
   | succ k ih => simp [Nat.shiftLeft_succ, Nat.log2_two_mul, hn, ih, add_assoc]
+
+@[simp]
+theorem Nat.log2_div_two (n : Nat) :
+    (n / 2).log2 = n.log2 - 1 := by
+  by_cases! h : n < 2
+  · match n with | 0 | 1 => simp_all
+  · rw [Nat.log2_eq_iff (by lia)]
+    have hne : n ≠ 0 := by lia
+    have : 1 ≤ n.log2 := by simpa [Nat.le_log2 hne]
+    rw [Nat.pow_sub_one (by decide) (by lia)]
+    constructor
+    · exact Nat.div_le_div_right (Nat.log2_self_le hne)
+    · simp [this, div_lt_iff_lt_mul, ← Nat.pow_succ, Nat.lt_log2_self]
+
+@[simp]
+theorem Nat.log2_shiftRight (n m : Nat) :
+    (n >>> m).log2 = n.log2 - m := by
+  induction m with
+  | zero => simp
+  | succ k ih => simp [Nat.shiftRight_succ, ih, Nat.sub_sub]
 
 theorem BitVec.log2_toNat_lt {w : Nat} (x : BitVec w) (h : w ≠ 0) : x.toNat.log2 < w := by
   by_cases hx : x.toNat = 0

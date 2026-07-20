@@ -104,6 +104,11 @@ lemma ofUnbounded_toUnbounded (x : RealFloat fmt) : ofUnbounded x.toUnbounded ro
   simp [ofUnbounded]
 
 @[simp]
+lemma toUnbounded_ofUnbounded {x : UnboundedFloat fmt} (h : fmt.InRange x.toFiniteReal) :
+    (ofUnbounded x round).toUnbounded = x := by
+  simp [ofUnbounded, h]
+
+@[simp]
 lemma ofUnbounded_roundReal (x : ℝ) (zs : SimpleSign) (round) :
     ofUnbounded (.roundReal x zs round : UnboundedFloat fmt) round = roundReal x zs round :=
   (rfl)

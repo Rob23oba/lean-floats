@@ -34,6 +34,25 @@ abbrev CommonFormat.toFormat (c : CommonFormat) : Format where
   hm := c.mbits_pos
   he := by grind [c.mbits_lt]
 
+class GoodFormat (f : Format) where
+  exponentBits_ge : 2 ≤ f.exponentBits := by decide
+
+class HasCommonOfFormat (f : Format) (c : outParam CommonFormat) where
+  elim (f) : f = c.toFormat := by rfl
+
+class HasCommonOfFloatFormat (f : FloatFormat 2) (c : outParam CommonFormat) where
+  elim (f) : f = c.toFloatFormat := by rfl
+
+instance (c : CommonFormat) : HasCommonOfFormat c.toFormat c where
+instance (c : CommonFormat) : HasCommonOfFloatFormat c.toFloatFormat c where
+
+instance : GoodFormat .binary32 where
+instance : GoodFormat .binary64 where
+instance : HasCommonOfFormat .binary32 .binary32 where
+instance : HasCommonOfFormat .binary64 .binary64 where
+instance : HasCommonOfFloatFormat .binary32 .binary32 where
+instance : HasCommonOfFloatFormat .binary64 .binary64 where
+
 @[simp]
 lemma CommonFormat.mantissaBits_toFormat (c : CommonFormat) : c.toFormat.mantissaBits = c.toFloatFormat.precision := by
   simp [Format.mantissaBits, add_comm]
@@ -49,7 +68,8 @@ lemma CommonFormat.two_le_toFormat_exponentBits (c : CommonFormat) :
   simp only [ge_iff_le]
   grind
 
-variable {fmt : CommonFormat}
+instance (c : CommonFormat) : GoodFormat c.toFormat where
+  exponentBits_ge := c.two_le_toFormat_exponentBits
 
 def mkSign (s : SimpleSign) : UnpackedFloat.Sign :=
   match s with
@@ -77,79 +97,81 @@ def ofSign (s : UnpackedFloat.Sign) : SimpleSign :=
 @[simp] lemma ofSign_mul {a b} : ofSign (a * b) = ofSign a * ofSign b := by cases a <;> cases b <;> rfl
 @[simp] lemma ofSign_div {a b} : ofSign (a / b) = ofSign a * ofSign b := by cases a <;> cases b <;> rfl
 
-noncomputable def toUnpackedFloat (x : RealFloat fmt.toFloatFormat) : UnpackedFloat :=
+noncomputable def ofUnboundedFloat {fmt : FloatFormat 2} (x : UnboundedFloat fmt) : UnpackedFloat :=
   match x with
   | .ofValidNNReal s x h =>
     if hx : x = 0 then
       .zero (mkSign s)
     else
-      .finite (mkSign s) (fmt.toFloatFormat.getMantissa x).natAbs (fmt.toFloatFormat.getExponent x) ?_
+      .finite (mkSign s) (fmt.getMantissa x).natAbs (fmt.getExponent x) ?_
   | .infinity s => .infinity (mkSign s)
   | .nan => .notANumber
-where finally simp [h.isRounded.getMantissa_eq_zero_iff, hx]
+where finally simp [h.getMantissa_eq_zero_iff, hx]
 
-noncomputable def ofUnpackedFloat (x : UnpackedFloat) : RealFloat fmt.toFloatFormat :=
+noncomputable def toUnboundedFloat {fmt : FloatFormat 2} (x : UnpackedFloat) : UnboundedFloat fmt :=
   match x with
   | .notANumber => .nan
   | .infinity s => .infinity (ofSign s)
-  | .zero s => .ofValidNNReal (ofSign s) 0 (id fmt.toFloatFormat.isValidFloat_zero)
+  | .zero s => .ofValidNNReal (ofSign s) 0 (by simp)
   | .finite s m e _hm => .roundNNReal (ofSign s) (m * 2 ^ e)
 
-@[simp]
-lemma toUnpackedFloat_nan :
-    toUnpackedFloat (.nan : RealFloat fmt.toFloatFormat) = .notANumber := (rfl)
+variable {fmt : FloatFormat 2}
 
 @[simp]
-lemma toUnpackedFloat_infinity :
-    toUnpackedFloat (.infinity s : RealFloat fmt.toFloatFormat) = .infinity (mkSign s) := (rfl)
+lemma ofUnboundedFloat_nan :
+    ofUnboundedFloat (.nan : UnboundedFloat fmt) = .notANumber := (rfl)
 
 @[simp]
-lemma toUnpackedFloat_zero :
-    toUnpackedFloat (.ofValidNNReal s 0 (by simp) : RealFloat fmt.toFloatFormat) =
+lemma ofUnboundedFloat_infinity {s} :
+    ofUnboundedFloat (.infinity s : UnboundedFloat fmt) = .infinity (mkSign s) := (rfl)
+
+@[simp]
+lemma ofUnboundedFloat_zero {s} :
+    ofUnboundedFloat (.ofValidNNReal s 0 (by simp) : UnboundedFloat fmt) =
       .zero (mkSign s) := by
-  simp [toUnpackedFloat]
+  simp [ofUnboundedFloat]
 
 @[simp]
-lemma ofUnpackedFloat_notANumber :
-    (ofUnpackedFloat .notANumber : RealFloat fmt.toFloatFormat) = .nan := (rfl)
+lemma toUnboundedFloat_notANumber :
+    (toUnboundedFloat .notANumber : UnboundedFloat fmt) = .nan := (rfl)
 
 @[simp]
-lemma ofUnpackedFloat_infinity :
-    (ofUnpackedFloat (.infinity s) : RealFloat fmt.toFloatFormat) = .infinity (ofSign s) := (rfl)
+lemma toUnboundedFloat_infinity {s} :
+    (toUnboundedFloat (.infinity s) : UnboundedFloat fmt) = .infinity (ofSign s) := (rfl)
 
 @[simp]
-lemma ofUnpackedFloat_zero :
-    (ofUnpackedFloat (.zero s) : RealFloat fmt.toFloatFormat) =
-      .ofValidNNReal (ofSign s) 0 (id fmt.toFloatFormat.isValidFloat_zero) := (rfl)
+lemma toUnboundedFloat_zero {s} :
+    (toUnboundedFloat (.zero s) : UnboundedFloat fmt) =
+      .ofValidNNReal (ofSign s) 0 (by simp) := (rfl)
 
-lemma ofUnpackedFloat_finite {s m e h} :
-    (ofUnpackedFloat (.finite s m e h) : RealFloat fmt.toFloatFormat) =
+lemma toUnboundedFloat_finite {s m e h} :
+    (toUnboundedFloat (.finite s m e h) : UnboundedFloat fmt) =
       .roundNNReal (ofSign s) (m * 2 ^ e) := (rfl)
 
 @[simp]
-lemma ofUnpackedFloat_toUnpackedFloat (x : RealFloat fmt.toFloatFormat) :
-    ofUnpackedFloat (toUnpackedFloat x) = x := by
-  fun_cases toUnpackedFloat
+lemma toUnboundedFloat_ofUnboundedFloat (x : UnboundedFloat fmt) :
+    toUnboundedFloat (ofUnboundedFloat x) = x := by
+  fun_cases ofUnboundedFloat
   · simp
   · rename_i s x h h'
-    have := h.isRounded.abs_getMantissa_mul_base_pow_getExponent
+    have := h.abs_getMantissa_mul_base_pow_getExponent
     simp only [Base.value_ofNat, Nat.cast_ofNat, NNReal.abs_eq] at this
-    simp [ofUnpackedFloat_finite, this, RealFloat.roundNNReal_eq_roundReal,
-      RealFloat.roundReal_eq_ofValidNNReal h]
+    simp [toUnboundedFloat_finite, this, UnboundedFloat.roundNNReal_eq_roundReal,
+      UnboundedFloat.roundReal_eq_ofValidNNReal h]
   · simp
   · simp
 
 @[simp]
-lemma toUnpackedFloat_inj {x y : RealFloat fmt.toFloatFormat} :
-    toUnpackedFloat x = toUnpackedFloat y ↔ x = y :=
-  (Function.LeftInverse.injective ofUnpackedFloat_toUnpackedFloat).eq_iff
+lemma ofUnboundedFloat_inj {x y : UnboundedFloat fmt} :
+    ofUnboundedFloat x = ofUnboundedFloat y ↔ x = y :=
+  (Function.LeftInverse.injective toUnboundedFloat_ofUnboundedFloat).eq_iff
 
 @[simp]
 lemma signApply_eq_ofSign_mul (s : UnpackedFloat.Sign) (z : ℤ) :
     s.apply z = ofSign s * z := by
   cases s <;> simp [UnpackedFloat.Sign.apply]
 
-lemma getExponent_eq_targetExponent {mant : ℕ} {f : ℝ} {exp : ℤ}
+lemma getExponent_eq_targetExponent {fmt : CommonFormat} {mant : ℕ} {f : ℝ} {exp : ℤ}
     (hmant : mant ≠ 0) (hf₁ : 0 ≤ f) (hf₂ : f < 1) :
     fmt.toFloatFormat.getExponent ((mant + f) * 2 ^ exp) =
       fmt.toFormat.targetExponent (totalExponent mant exp) := by
