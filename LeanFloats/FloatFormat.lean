@@ -164,14 +164,42 @@ lemma isRounded_neg_iff {x : ℝ} :
   ⟨fun h => by simpa using h.neg, .neg⟩
 
 @[simp]
+lemma isRounded_abs_iff {x : ℝ} :
+    f.IsRounded |x| ↔ f.IsRounded x := by
+  grind [isRounded_neg_iff]
+
+@[simp]
+lemma isRounded_simpleSign_mul_iff {s : SimpleSign} {x : ℝ} :
+    f.IsRounded (s * x) ↔ f.IsRounded x := by cases s <;> simp
+
+@[simp]
 lemma inRange_neg_iff {x : ℝ} :
     f.InRange (-x) ↔ f.InRange x :=
   ⟨fun h => by simpa using h.neg, .neg⟩
 
 @[simp]
+lemma inRange_abs_iff {x : ℝ} :
+    f.InRange |x| ↔ f.InRange x := by
+  grind [inRange_neg_iff]
+
+@[simp]
+lemma inRange_simpleSign_mul_iff {s : SimpleSign} {x : ℝ} :
+    f.InRange (s * x) ↔ f.InRange x := by cases s <;> simp
+
+@[simp]
 lemma isValidFloat_neg_iff {x : ℝ} :
     f.IsValidFloat (-x) ↔ f.IsValidFloat x :=
   ⟨fun h => by simpa using h.neg, .neg⟩
+
+@[simp]
+lemma isValidFloat_abs_iff {x : ℝ} :
+    f.IsValidFloat |x| ↔ f.IsValidFloat x := by
+  simp [isValidFloat_iff]
+
+@[simp]
+lemma isValidFloat_simpleSign_mul_iff {s : SimpleSign} {x : ℝ} :
+    f.IsValidFloat (s * x) ↔ f.IsValidFloat x := by
+  simp [isValidFloat_iff]
 
 @[simp]
 lemma isRounded_zero : IsRounded f 0 :=

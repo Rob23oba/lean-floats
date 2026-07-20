@@ -341,6 +341,11 @@ lemma ofValue_neg_neg [LinearOrder α] [AddCommGroup α] [IsOrderedAddMonoid α]
     simp [ofValue_of_neg, ofValue_of_pos, *]
 
 @[simp]
+lemma ofValue_signType_neg_neg {x : SignType} {s : SimpleSign} :
+    ofValue (-x) (-s) = -ofValue x s := by
+  obtain h | rfl | h := lt_trichotomy x 0 <;> simp_all [ofValue_of_neg, ofValue_of_pos]
+
+@[simp]
 lemma ofValue_ofValue [LinearOrder α] [Zero α]
     (x : α) (zs : SimpleSign) : ofValue x (ofValue x zs) = ofValue x zs := by
   obtain h | rfl | h := lt_trichotomy x 0 <;> simp_all [ofValue_of_pos, ofValue_of_neg]
@@ -348,6 +353,10 @@ lemma ofValue_ofValue [LinearOrder α] [Zero α]
 @[simp]
 lemma ofValue_coe [LinearOrder α] [Ring α] [IsStrictOrderedRing α]
     {s s' : SimpleSign} : ofValue (s : α) s' = s := by
+  cases s <;> simp [ofValue_of_pos, ofValue_of_neg]
+
+@[simp]
+lemma ofValue_coe_signType {s s' : SimpleSign} : ofValue (s : SignType) s' = s := by
   cases s <;> simp [ofValue_of_pos, ofValue_of_neg]
 
 @[simp]

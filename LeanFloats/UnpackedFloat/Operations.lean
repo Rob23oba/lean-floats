@@ -97,4 +97,10 @@ lemma RealFloat.ofFloat32_toFloat32 (f : RealFloat .binary32) :
   simp [ofFloat32, toFloat32, Float32.Model.pack, Float32.Model.unpack, UnpackedFloat.unpack_pack,
     UnpackedFloat.isValid_toUnpackedFloat (fmt := .binary32)]
 
+@[simp]
+lemma RealFloat.ofFloat_add (a b : Float) :
+    ofFloat (a + b) = (ofFloat a).add (ofFloat b) := by
+  simp [Float.add, ofFloat, Float.Model.unpack, · + ·, Add.add,
+    Float.Model.add]
+
 end LeanFloats
