@@ -1,5 +1,5 @@
 module
-public import LeanFloats.UnpackedFloat.Rounding
+public import LeanFloats.UnpackedFloat.Basic
 public import LeanFloats.PackLemmas
 
 @[expose] public section

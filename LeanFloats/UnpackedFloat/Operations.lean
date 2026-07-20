@@ -1,10 +1,10 @@
 module
 public import LeanFloats.UnpackedFloat.Valid
-public import LeanFloats.PackLemmas
+public import LeanFloats.UnpackedFloat.Rounding
 
 namespace LeanFloats.UnpackedFloat
 
-open _root_.Float.Model LeanFloats.UnpackedFloat
+open Float.Model
 
 variable {fmt : CommonFormat}
 
@@ -69,6 +69,7 @@ noncomputable def RealFloat.toFloat (f : RealFloat .binary64) : Float :=
 noncomputable def RealFloat.toFloat32 (f : RealFloat .binary32) : Float32 :=
   .ofModel <| .pack (UnpackedFloat.toUnpackedFloat (fmt := .binary32) f)
 
+@[simp]
 lemma RealFloat.toFloat_ofFloat (f : Float) :
     (ofFloat f).toFloat = f := by
   rw [← Float.toBits_inj, ← UInt64.toBitVec_inj]
@@ -76,6 +77,7 @@ lemma RealFloat.toFloat_ofFloat (f : Float) :
     Float.Model.unpack, UnpackedFloat.toUnpackedFloat_ofUnpackedFloat,
     Float.Model.UnpackedFloat.pack_unpack_of_valid f.toModel.valid]
 
+@[simp]
 lemma RealFloat.toFloat32_ofFloat32 (f : Float32) :
     (ofFloat32 f).toFloat32 = f := by
   rw [← Float32.toBits_inj, ← UInt32.toBitVec_inj]
@@ -83,11 +85,13 @@ lemma RealFloat.toFloat32_ofFloat32 (f : Float32) :
     Float32.Model.unpack, UnpackedFloat.toUnpackedFloat_ofUnpackedFloat,
     Float.Model.UnpackedFloat.pack_unpack_of_valid f.toModel.valid]
 
+@[simp]
 lemma RealFloat.ofFloat_toFloat (f : RealFloat .binary64) :
     ofFloat f.toFloat = f := by
   simp [ofFloat, toFloat, Float.Model.pack, Float.Model.unpack, UnpackedFloat.unpack_pack,
     UnpackedFloat.isValid_toUnpackedFloat (fmt := .binary64)]
 
+@[simp]
 lemma RealFloat.ofFloat32_toFloat32 (f : RealFloat .binary32) :
     ofFloat32 f.toFloat32 = f := by
   simp [ofFloat32, toFloat32, Float32.Model.pack, Float32.Model.unpack, UnpackedFloat.unpack_pack,
