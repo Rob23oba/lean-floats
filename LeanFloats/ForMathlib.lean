@@ -2,6 +2,7 @@ module
 public import Mathlib.Data.EReal.Operations
 public import Mathlib.Data.Sign.Defs
 public import Mathlib.Data.Int.Log
+public import Mathlib.Data.Nat.Bitwise
 
 public section
 
@@ -145,3 +146,45 @@ theorem Nat.log2_shiftLeft {n m : Nat} (hn : n ≠ 0) :
   induction m with
   | zero => simp
   | succ k ih => simp [Nat.shiftLeft_succ, Nat.log2_two_mul, hn, ih, add_assoc]
+
+theorem BitVec.log2_toNat_lt {w : Nat} (x : BitVec w) (h : w ≠ 0) : x.toNat.log2 < w := by
+  by_cases hx : x.toNat = 0
+  · simp_all [h.pos]
+  · simp [Nat.log2_lt hx, x.isLt]
+
+theorem Nat.bit_add_bit {b c : Bool} {m n : Nat} :
+    Nat.bit b m + Nat.bit c n = Nat.bit (b ^^ c) (m + n + (b && c).toNat) := by
+  cases b <;> cases c <;> simp +arith
+
+theorem Nat.and_add_or_eq (a b : Nat) :
+    (a &&& b) + (a ||| b) = a + b := by
+  induction a using Nat.binaryRec generalizing b with
+  | zero => simp
+  | bit b₁ n₁ ih =>
+    induction b using Nat.binaryRec with
+    | zero => simp
+    | bit b₂ n₂ =>
+      simp only [land_bit, lor_bit, bit_add_bit, ih]
+      congr 1
+      · clear *-b₁ b₂
+        decide +revert
+      · congr 1
+        clear *-b₁ b₂
+        decide +revert
+
+theorem Nat.or_eq_add_of_and_eq_zero {a b : Nat} (h : a &&& b = 0) :
+    a ||| b = a + b := by
+  rw [← Nat.and_add_or_eq, h, Nat.zero_add]
+
+theorem BitVec.toNat_append_eq_add {w w' : Nat} (x : BitVec w) (y : BitVec w') :
+    (x ++ y).toNat = x.toNat * 2 ^ w' + y.toNat := by
+  rw [toNat_append, Nat.shiftLeft_eq]
+  apply Nat.or_eq_add_of_and_eq_zero
+  apply Nat.eq_of_testBit_eq
+  simp +contextual [Nat.testBit_mul_two_pow, ← BitVec.getLsbD.eq_def, BitVec.getLsbD_of_ge]
+
+theorem Nat.log2_two_pow_add {n m : ℕ} (h : m < 2 ^ n) :
+    (2 ^ n + m).log2 = n := by
+  rw [Nat.log2_eq_iff (by positivity)]
+  grw [h]
+  simp [Nat.two_pow_succ]

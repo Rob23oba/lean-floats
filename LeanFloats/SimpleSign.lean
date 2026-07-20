@@ -86,6 +86,7 @@ lemma ne_neg_one_iff : ∀ {s : SimpleSign}, s ≠ -1 ↔ s = 1 := by decide
 @[simp] lemma neg_ne : ∀ {s : SimpleSign}, -s ≠ s := by decide
 
 lemma eq_self_or_neg : ∀ (s s' : SimpleSign), s = s' ∨ s = -s' := by decide
+lemma ne_iff_eq_neg : ∀ {s s' : SimpleSign}, ¬ s = s' ↔ s = -s' := by decide
 
 instance : HasDistribNeg SimpleSign where
   neg_neg := by decide
@@ -149,6 +150,16 @@ protected lemma min_neg_neg : ∀ (s s' : SimpleSign), min (-s) (-s') = -max s s
 @[simp] lemma min_neg_self_left : ∀ (s : SimpleSign), min (-s) s = -1 := by decide
 @[simp] lemma min_neg_self_right : ∀ (s : SimpleSign), min s (-s) = -1 := by decide
 
+@[simp] lemma max_eq_one_iff : ∀ {s s' : SimpleSign}, max s s' = 1 ↔ s = 1 ∨ s' = 1 := by decide
+@[simp] lemma max_eq_neg_one_iff : ∀ {s s' : SimpleSign}, max s s' = -1 ↔ s = -1 ∧ s' = -1 := by decide
+@[simp] lemma min_eq_one_iff : ∀ {s s' : SimpleSign}, min s s' = 1 ↔ s = 1 ∧ s' = 1 := by decide
+@[simp] lemma min_eq_neg_one_iff : ∀ {s s' : SimpleSign}, min s s' = -1 ↔ s = -1 ∨ s' = -1 := by decide
+
+@[simp] lemma one_eq_max_iff : ∀ {s s' : SimpleSign}, 1 = max s s' ↔ s = 1 ∨ s' = 1 := by decide
+@[simp] lemma neg_one_eq_max_iff : ∀ {s s' : SimpleSign}, -1 = max s s' ↔ s = -1 ∧ s' = -1 := by decide
+@[simp] lemma one_eq_min_iff : ∀ {s s' : SimpleSign}, 1 = min s s' ↔ s = 1 ∧ s' = 1 := by decide
+@[simp] lemma neg_one_eq_min_iff : ∀ {s s' : SimpleSign}, -1 = min s s' ↔ s = -1 ∨ s' = -1 := by decide
+
 variable {α : Type*}
 
 @[coe]
@@ -177,6 +188,14 @@ lemma coe_mul_inj [MulOneClass α] [HasDistribNeg α] {s : SimpleSign} {x y : α
 @[simp]
 lemma mul_coe_inj [MulOneClass α] [HasDistribNeg α] {s : SimpleSign} {x y : α} :
     x * s = y * s ↔ x = y := by cases s <;> simp
+
+@[simp]
+lemma coe_signType_inj {s s' : SimpleSign} :
+    (s : SignType) = s' ↔ s = s' := by decide +revert
+
+@[grind inj]
+lemma coe_signType_injective : Function.Injective ((↑) : SimpleSign → SignType) := by
+  intro; decide +revert
 
 @[simp, norm_cast]
 lemma coe_neg [One α] [InvolutiveNeg α] (s : SimpleSign) :
@@ -271,6 +290,13 @@ lemma ofValue_of_nonpos [LinearOrder α] [Zero α] {x : α} (h : x ≤ 0) : ofVa
   cases h.eq_or_lt
   · simp [‹x = 0›]
   · rw [ofValue_of_neg ‹_›]
+
+@[simp]
+lemma ofValue_eq_ofValue_iff [LinearOrder α] [Zero α]
+    {x : α} {zs zs' : SimpleSign} :
+    ofValue x zs = ofValue x zs' ↔ x = 0 → zs = zs' := by
+  obtain h | rfl | h := lt_trichotomy x 0 <;>
+    simp_all [ofValue_of_pos, ofValue_of_neg, ne_of_gt, ne_of_lt]
 
 @[simp]
 lemma ofValue_one_eq_one_iff [LinearOrder α] [Zero α] {x : α} :

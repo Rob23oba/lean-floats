@@ -91,6 +91,40 @@ lemma roundReal_eq_roundNNReal (x zs round) :
     (roundReal x zs round : RealFloat fmt) = roundNNReal (.ofValue x zs) x.nnabs round := by
   simp [roundNNReal_eq_roundReal, ← roundReal_eq_roundReal_ofValue]
 
+@[simp]
+lemma neg_maxFinite {s} : -(maxFinite s : RealFloat fmt) = maxFinite (-s) := by
+  simp [maxFinite]
+
+@[simp]
+lemma neg_overflowValue {s round} :
+    -(overflowValue s round : RealFloat fmt) = overflowValue (-s) round.opposite := by
+  simp [overflowValue, apply_ite (-· : RealFloat fmt → _)]
+
+@[simp]
+lemma neg_roundReal {x zs round} :
+    -(roundReal x zs round : RealFloat fmt) = roundReal (-x) (-zs) round.opposite := by
+  unfold roundReal
+  extract_lets e y e' y'
+  have he : e = e' := by simp [e, e']
+  have hy : y = -y' := by simp [y, y', he, neg_div]
+  simp only [hy, FloatFormat.inRange_neg_iff, Real.nnabs_neg, SimpleSign.ofValue_neg_neg]
+  split <;> simp
+
+@[simp]
+lemma neg_roundNNReal {s x round} :
+    -(roundNNReal s x round : RealFloat fmt) = roundNNReal (-s) x round.opposite := by
+  simp [roundNNReal_eq_roundReal]
+
+@[simp]
+lemma roundNNReal_sign_inj {s s' x round} :
+    (roundNNReal s x round : RealFloat fmt) = roundNNReal s' x round ↔ s = s' := by
+  grind [sign_roundNNReal]
+
+@[simp]
+lemma roundReal_sign_inj {x zs zs' round} :
+    (roundReal x zs round : RealFloat fmt) = roundReal x zs' round ↔ x = 0 → zs = zs' := by
+  simp [roundReal_eq_roundNNReal]
+
 lemma roundReal_eq_of_isRounded {x : ℝ} (h : fmt.IsRounded x) (zs : SimpleSign) :
     roundReal x zs round =
       if h' : fmt.InRange x then ofValidReal x ⟨h, h'⟩ zs
@@ -141,6 +175,20 @@ lemma zero_eq_ofValidNNReal : (0 : RealFloat fmt) = .ofValidNNReal 1 0 (by exact
 lemma one_eq_ofValidNNReal : (1 : RealFloat fmt) = .ofValidNNReal 1 1 (by exact fmt.isValidFloat_one) := by
   rw [ofNat_eq_roundReal_tiesToEven, roundReal_natCast_eq_of_le (by simp [one_le_pow_iff])]
   simp
+
+lemma ofValidNNReal_neg_one_eq_neg_zero :
+    .ofValidNNReal (-1) 0 (by exact fmt.isValidFloat_zero) = (-0 : RealFloat fmt) := by
+  simp [zero_eq_ofValidNNReal]
+
+@[simp]
+lemma ofValidNNReal_eq_zero_iff {s x h} :
+    (.ofValidNNReal s x h : RealFloat fmt) = 0 ↔ s = 1 ∧ x = 0 := by
+  simp [zero_eq_ofValidNNReal]
+
+@[simp]
+lemma ofValidNNReal_eq_neg_zero_iff {s x h} :
+    (.ofValidNNReal s x h : RealFloat fmt) = -0 ↔ s = -1 ∧ x = 0 := by
+  simp [zero_eq_ofValidNNReal]
 
 @[simp] lemma isFinite_zero : (0 : RealFloat fmt).IsFinite := by simp [zero_eq_ofValidNNReal]
 @[simp] lemma isFinite_one : (1 : RealFloat fmt).IsFinite := by simp [one_eq_ofValidNNReal]

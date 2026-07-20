@@ -1,5 +1,6 @@
 module
 public import LeanFloats.RealFloats.Rounding
+public import LeanFloats.UnpackedFloat.FormatTrivial
 
 @[expose] public section
 
@@ -10,25 +11,43 @@ open Float.Model
 structure CommonFormat where
   ebits : Nat
   mbits : Nat
-  mbits_pos : 0 < mbits
-  mbits_lt : mbits + 1 < 2 ^ (ebits - 1)
+  mbits_pos : 0 < mbits := by decide
+  mbits_lt : mbits + 1 < 2 ^ (ebits - 1) := by decide
 
-def CommonFormat.toFloatFormat (c : CommonFormat) : FloatFormat 2 where
+abbrev CommonFormat.binary32 : CommonFormat where
+  ebits := 8
+  mbits := 23
+
+abbrev CommonFormat.binary64 : CommonFormat where
+  ebits := 11
+  mbits := 52
+
+abbrev CommonFormat.toFloatFormat (c : CommonFormat) : FloatFormat 2 where
   infExp := 2 ^ (c.ebits - 1)
   precision := c.mbits + 1
   precision_pos := by simp
   precision_lt_infExp := c.mbits_lt
 
-def CommonFormat.toFormat (c : CommonFormat) : Format where
+abbrev CommonFormat.toFormat (c : CommonFormat) : Format where
   mantissaBitsWithoutImplicit := c.mbits
   exponentBits := c.ebits
   hm := c.mbits_pos
   he := by grind [c.mbits_lt]
 
 @[simp]
-lemma minExponent_toFormat (c : CommonFormat) : c.toFormat.minExponent = c.toFloatFormat.minExp := by
-  simp [CommonFormat.toFloatFormat, CommonFormat.toFormat, Format.minExponent, FloatFormat.minExp,
-    Format.mantissaBits, add_comm]
+lemma CommonFormat.mantissaBits_toFormat (c : CommonFormat) : c.toFormat.mantissaBits = c.toFloatFormat.precision := by
+  simp [Format.mantissaBits, add_comm]
+
+@[simp]
+lemma CommonFormat.minExponent_toFormat (c : CommonFormat) : c.toFormat.minExponent = c.toFloatFormat.minExp := by
+  simp [Format.minExponent, FloatFormat.minExp, Format.mantissaBits, add_comm]
+
+@[simp]
+lemma CommonFormat.two_le_toFormat_exponentBits (c : CommonFormat) :
+    2 ≤ c.toFormat.exponentBits := by
+  have := c.mbits_lt
+  simp only [ge_iff_le]
+  grind
 
 variable {fmt : CommonFormat}
 
@@ -51,6 +70,13 @@ def ofSign (s : UnpackedFloat.Sign) : SimpleSign :=
 @[simp] lemma ofSign_mkSign (s) : ofSign (mkSign s) = s := by cases s <;> rfl
 @[simp] lemma mkSign_ofSign (s) : mkSign (ofSign s) = s := by cases s <;> rfl
 
+@[simp] lemma ofSign_inj {a b} : ofSign a = ofSign b ↔ a = b := by cases a <;> cases b <;> simp
+@[simp] lemma mkSign_inj {a b} : mkSign a = mkSign b ↔ a = b := by cases a <;> cases b <;> simp
+
+@[simp] lemma ofSign_neg {a} : ofSign (-a) = -ofSign a := by cases a <;> rfl
+@[simp] lemma ofSign_mul {a b} : ofSign (a * b) = ofSign a * ofSign b := by cases a <;> cases b <;> rfl
+@[simp] lemma ofSign_div {a b} : ofSign (a / b) = ofSign a * ofSign b := by cases a <;> cases b <;> rfl
+
 noncomputable def toUnpackedFloat (x : RealFloat fmt.toFloatFormat) : UnpackedFloat :=
   match x with
   | .ofValidNNReal s x h =>
@@ -66,25 +92,62 @@ noncomputable def ofUnpackedFloat (x : UnpackedFloat) : RealFloat fmt.toFloatFor
   match x with
   | .notANumber => .nan
   | .infinity s => .infinity (ofSign s)
-  | .zero s => .ofValidNNReal (ofSign s) 0 fmt.toFloatFormat.isValidFloat_zero
-  | .finite s m e _hm => .roundReal (ofSign s * (m * 2 ^ e)) (ofSign s)
+  | .zero s => .ofValidNNReal (ofSign s) 0 (id fmt.toFloatFormat.isValidFloat_zero)
+  | .finite s m e _hm => .roundNNReal (ofSign s) (m * 2 ^ e)
+
+@[simp]
+lemma toUnpackedFloat_nan :
+    toUnpackedFloat (.nan : RealFloat fmt.toFloatFormat) = .notANumber := (rfl)
+
+@[simp]
+lemma toUnpackedFloat_infinity :
+    toUnpackedFloat (.infinity s : RealFloat fmt.toFloatFormat) = .infinity (mkSign s) := (rfl)
+
+@[simp]
+lemma toUnpackedFloat_zero :
+    toUnpackedFloat (.ofValidNNReal s 0 (by simp) : RealFloat fmt.toFloatFormat) =
+      .zero (mkSign s) := by
+  simp [toUnpackedFloat]
+
+@[simp]
+lemma ofUnpackedFloat_notANumber :
+    (ofUnpackedFloat .notANumber : RealFloat fmt.toFloatFormat) = .nan := (rfl)
+
+@[simp]
+lemma ofUnpackedFloat_infinity :
+    (ofUnpackedFloat (.infinity s) : RealFloat fmt.toFloatFormat) = .infinity (ofSign s) := (rfl)
+
+@[simp]
+lemma ofUnpackedFloat_zero :
+    (ofUnpackedFloat (.zero s) : RealFloat fmt.toFloatFormat) =
+      .ofValidNNReal (ofSign s) 0 (id fmt.toFloatFormat.isValidFloat_zero) := (rfl)
+
+lemma ofUnpackedFloat_finite {s m e h} :
+    (ofUnpackedFloat (.finite s m e h) : RealFloat fmt.toFloatFormat) =
+      .roundNNReal (ofSign s) (m * 2 ^ e) := (rfl)
 
 @[simp]
 lemma ofUnpackedFloat_toUnpackedFloat (x : RealFloat fmt.toFloatFormat) :
     ofUnpackedFloat (toUnpackedFloat x) = x := by
   fun_cases toUnpackedFloat
-  · simp [ofUnpackedFloat]
+  · simp
   · rename_i s x h h'
     have := h.isRounded.abs_getMantissa_mul_base_pow_getExponent
     simp only [Base.value_ofNat, Nat.cast_ofNat, NNReal.abs_eq] at this
-    simp [ofUnpackedFloat, this, RealFloat.roundReal_eq_ofValidNNReal h]
-  · simp [ofUnpackedFloat]
-  · simp [ofUnpackedFloat]
+    simp [ofUnpackedFloat_finite, this, RealFloat.roundNNReal_eq_roundReal,
+      RealFloat.roundReal_eq_ofValidNNReal h]
+  · simp
+  · simp
 
 @[simp]
 lemma toUnpackedFloat_inj {x y : RealFloat fmt.toFloatFormat} :
     toUnpackedFloat x = toUnpackedFloat y ↔ x = y :=
   (Function.LeftInverse.injective ofUnpackedFloat_toUnpackedFloat).eq_iff
+
+@[simp]
+lemma signApply_eq_ofSign_mul (s : UnpackedFloat.Sign) (z : ℤ) :
+    s.apply z = ofSign s * z := by
+  cases s <;> simp [UnpackedFloat.Sign.apply]
 
 inductive AccuracyRepresents : UnpackedFloat.Accuracy → ℝ → Prop where
   | exact {x} (h : x = 0) : AccuracyRepresents .exact x
@@ -109,7 +172,8 @@ protected lemma AccuracyRepresents.roundToNearestEven
     rw [hcmp]
     by_cases hn : Even n
     · rw [RoundingFunction.tiesToEven_natCast_add_of_even hn (by simp)]
-      simp [UnpackedFloat.Accuracy.roundToNearestEven, ← Int.even_iff, hn]
+      simpa [UnpackedFloat.Accuracy.roundToNearestEven,
+        ← Int.dvd_iff_emod_eq_zero, ← even_iff_two_dvd] using hn
     · rw [show (n + 2⁻¹ : ℝ) = (n + 1 : ℕ) - 2⁻¹ by grind]
       rw [RoundingFunction.tiesToEven_natCast_sub_of_even (by grind) (by simp)]
       simp [UnpackedFloat.Accuracy.roundToNearestEven, ← Int.odd_iff, ← Int.not_even_iff_odd, hn]
@@ -227,9 +291,8 @@ lemma getExponent_eq_targetExponent {mant : ℕ} {f : ℝ} {exp : ℤ}
   simp [totalExponent, Format.targetExponent, FloatFormat.getExponent,
     zpow_ne_zero, show 0 < mant + f by positivity, ne_of_gt, abs_of_pos,
     Int.log_natCast_add_eq_natLog hmant.pos hf₁ hf₂, ← Nat.log2_eq_log_two,
-    CommonFormat.toFloatFormat, CommonFormat.toFormat, Format.mantissaBits,
-    Format.minExponent, FloatFormat.minExp, ← sub_sub, add_right_comm,
-    sub_right_comm _ _ (1 : ℤ)]
+    Format.mantissaBits, Format.minExponent, FloatFormat.minExp, ← sub_sub,
+    add_right_comm, sub_right_comm _ _ (1 : ℤ)]
 
 -- TODO: cleanup / simplify / split
 lemma ofUnpackedFloat_roundWithAccuracy {s : UnpackedFloat.Sign} {mant : ℕ} {exp : ℤ}
@@ -266,20 +329,16 @@ lemma ofUnpackedFloat_roundWithAccuracy {s : UnpackedFloat.Sign} {mant : ℕ} {e
     norm_cast
     grw [Nat.add_one_le_of_lt Nat.lt_log2_self, Nat.cast_pow, Nat.cast_ofNat, ← zpow_natCast]
     apply zpow_le_zpow_right₀ one_le_two
-    grind [Format.targetExponent, totalExponent, CommonFormat.toFormat, Format.mantissaBits,
-      Format.minExponent]
+    format_trivial
   replace hfmant : fmant * (2 : ℝ) ^ fexp = rounded * 2 ^ exp' := by
     by_cases heqz : rounded = 0
     · clear *-hfmant heqz; simp_all
     rcases hrounded_le.lt_or_eq with hlt | heq
     · rw [← Nat.log2_lt heqz] at hlt
-      suffices fexp = exp' by subst this; clear *-hfmant; simp_all
-      grind [Format.targetExponent, totalExponent, CommonFormat.toFormat, Format.mantissaBits,
-        Format.minExponent]
+      have : fexp = exp' := by format_trivial
+      subst this; clear *-hfmant; simp_all
     · rw [← Int.cast_natCast, hfmant]
-      have : fexp = exp' + 1 := by
-        grind [Format.targetExponent, totalExponent, CommonFormat.toFormat, Format.mantissaBits,
-          Format.minExponent, = Nat.log2_two_pow]
+      have : fexp = exp' + 1 := by clear *-hfexp hexp' heq; format_trivial
       clear *-this heq hfmant
       rw [← hfmant]
       replace hfmant : fmant = ⌊(2 ^ (fmt.mbits : ℤ) : ℝ)⌋ := by
@@ -310,9 +369,10 @@ lemma ofUnpackedFloat_roundWithAccuracy {s : UnpackedFloat.Sign} {mant : ℕ} {e
   simp (disch := positivity) only [SimpleSign.ofValue_coe_mul_eq_self]
   split
   · rename_i hfmant'
-    simp [hfmant', ofUnpackedFloat]
-  · simp (disch := positivity) [ofUnpackedFloat,  RealFloat.roundReal_eq_of_isRounded isRounded,
-      SimpleSign.ofValue_coe_mul_eq_self, RealFloat.ofValidReal, Real.toNNReal_mul, Real.toNNReal_zpow]
+    simp [hfmant']
+  · simp (disch := positivity) [ofUnpackedFloat_finite, RealFloat.roundNNReal_eq_roundReal,
+      RealFloat.roundReal_eq_of_isRounded isRounded, SimpleSign.ofValue_coe_mul_eq_self,
+      RealFloat.ofValidReal, Real.toNNReal_mul, Real.toNNReal_zpow]
 
 lemma ofUnpackedFloat_round {s : UnpackedFloat.Sign} {mant : ℕ} {exp : ℤ} (hmant : mant ≠ 0) :
     ofUnpackedFloat (UnpackedFloat.round fmt.toFormat s mant exp) =
@@ -327,8 +387,7 @@ lemma ofUnpackedFloat_round {s : UnpackedFloat.Sign} {mant : ℕ} {exp : ℤ} (h
     unfold UnpackedFloat.decreaseExponent at h
     cases h
     simp [totalExponent, hmant]
-    grind [Format.targetExponent, totalExponent, CommonFormat.toFormat, Format.mantissaBits,
-      Format.minExponent]
+    format_trivial
   rw [ofUnpackedFloat_roundWithAccuracy (f := 0) hmant' hexp' (.exact rfl), add_zero, decreaseExponent_eq h]
 
 @[simp]
@@ -344,7 +403,7 @@ lemma ofUnpackedFloat_normalize (mant exp : ℤ) (zs : Float.Model.UnpackedFloat
       map_mul, map_zpow₀, this, h]
   · rename_i h
     rw [Int.compare_eq_eq] at h
-    simp [RealFloat.roundReal, h, ofUnpackedFloat]
+    simp [RealFloat.roundReal, h]
   · rename_i h
     rw [Int.compare_eq_gt] at h
     have : mant.toNat = mant.natAbs := by lia

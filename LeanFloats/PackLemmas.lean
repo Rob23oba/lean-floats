@@ -30,8 +30,11 @@ protected theorem forall_iff {p : Sign → Prop} :
 instance {p : Sign → Prop} [∀ s, Decidable (p s)] : Decidable (∀ s : Sign, p s) :=
   decidable_of_decidable_of_iff Sign.forall_iff.symm
 
-deriving instance DecidableEq for Sign
+deriving instance ReflBEq for Sign
+deriving instance LawfulBEq for Sign
 
+attribute [local instance_reducible] instDecidableEqOfLawfulBEq in
+attribute [local instance] instDecidableEqOfLawfulBEq in
 instance : Std.LawfulEqOrd Sign where
   compare_self := by decide
   eq_of_compare := by decide
@@ -161,6 +164,10 @@ theorem unpack_packedZero {spec : Format} {sign : Sign} : unpack spec (packedZer
   simp [unpack, packedZero, Nat.ne_of_gt spec.he]
 
 @[simp]
+theorem unpack_packedInfinity {spec : Format} {sign : Sign} : unpack spec (packedInfinity spec sign) = .infinity sign := by
+  simp [unpack, packedInfinity]
+
+@[simp]
 theorem isNaN_iff : isNaN x ↔ x = notANumber := by
   cases x <;> simp [isNaN]
 
@@ -179,6 +186,8 @@ theorem isNaN_unpack_iff_of_valid {spec : Format} {b : BitVec spec.numBits}
     (unpack spec b).isNaN ↔ b = packedNaN spec := by
   rw [isNaN_iff, unpack_eq_notANumber_iff_of_valid hvalid hspec]
 
+attribute [local instance_reducible] instDecidableEqOfLawfulBEq in
+attribute [local instance] instDecidableEqOfLawfulBEq in
 theorem beq_iff_ne_notANumber_and_eq (a b : UnpackedFloat) :
     a.beq b ↔ a ≠ notANumber ∧ b ≠ notANumber ∧
       (a = b ∨ (a = .zero .positive ∧ b = .zero .negative) ∨

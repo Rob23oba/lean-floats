@@ -52,6 +52,14 @@ structure FloatFormat (base : Base) where
 
 namespace FloatFormat
 
+abbrev binary32 : FloatFormat 2 where
+  infExp := 128
+  precision := 24
+
+abbrev binary64 : FloatFormat 2 where
+  infExp := 1024
+  precision := 53
+
 variable {base : Base} {f : FloatFormat base}
 
 attribute [simp, grind! .] precision_lt_infExp precision_pos

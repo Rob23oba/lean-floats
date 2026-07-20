@@ -53,7 +53,23 @@ lemma isFinite_ofValidReal (x : ℝ) (h : fmt.IsValidFloat x) (zs : SimpleSign) 
   .ofValidNNReal ..
 
 @[simp]
+lemma not_isFinite_nan : ¬ IsFinite (nan : RealFloat fmt) := nofun
+
+@[simp]
+lemma not_isFinite_infinity {s : SimpleSign} : ¬ IsFinite (infinity s : RealFloat fmt) := nofun
+
+@[simp]
 lemma IsFinite.ne_nan {x : RealFloat fmt} (h : x.IsFinite) : x ≠ nan := by
+  cases h; simp
+
+@[simp]
+lemma IsFinite.ne_infinity {x : RealFloat fmt} {s : SimpleSign}
+    (h : x.IsFinite) : x ≠ infinity s := by
+  cases h; simp
+
+@[simp]
+lemma IsFinite.infinity_ne {x : RealFloat fmt} {s : SimpleSign}
+    (h : x.IsFinite) : infinity s ≠ x := by
   cases h; simp
 
 @[simp]
@@ -186,9 +202,11 @@ instance : Neg (RealFloat fmt) where
 instance : InvolutiveNeg (RealFloat fmt) where
   neg_neg x := by cases x <;> simp
 
-@[simp] lemma neg_eq_nan_iff : -x = nan ↔ x = nan := by simp [neg_eq_iff_eq_neg]
-@[simp] lemma neg_eq_self_iff : -x = x ↔ x = nan := by cases x <;> simp
-@[simp] lemma self_eq_neg_iff : x = -x ↔ x = nan := by cases x <;> simp
+@[simp] lemma neg_eq_nan_iff {x : RealFloat fmt} : -x = nan ↔ x = nan := by simp [neg_eq_iff_eq_neg]
+@[simp] lemma neg_eq_self_iff {x : RealFloat fmt} : -x = x ↔ x = nan := by cases x <;> simp
+@[simp] lemma self_eq_neg_iff {x : RealFloat fmt} : x = -x ↔ x = nan := by cases x <;> simp
+
+@[simp] lemma isFinite_neg_iff {x : RealFloat fmt} : IsFinite (-x) ↔ IsFinite x := by cases x <;> simp
 
 @[simp] lemma neg_ofValidReal {x h zs} :
     -(ofValidReal x h zs : RealFloat fmt) = ofValidReal (-x) h.neg (-zs) := by
