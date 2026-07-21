@@ -1,7 +1,7 @@
 module
 public import LeanFloats.SimpleSign
-public import LeanFloats.FloatFormat
 public import Mathlib.Tactic.Order
+public import Mathlib.Tactic.Rify
 public import Mathlib.Order.Filter.AtTopBot.Basic
 
 @[expose] public section
@@ -64,6 +64,22 @@ protected lemma apply_nonneg {f : RoundingFunction} {x : ℝ} (h : 0 ≤ x) : 0 
 
 protected lemma apply_nonpos {f : RoundingFunction} {x : ℝ} (h : x ≤ 0) : f x ≤ 0 := by
   simpa using f.monotone h
+
+open Mathlib.Meta.Positivity Qq in
+@[positivity (_ : RoundingFunction) _]
+meta def Base.valuePositivityExt : PositivityExt where eval {u α} _ pα? e :=
+  match pα? with | none => pure .none | some _ => do
+  match u, α, e with
+  | 0, ~q(ℤ), ~q(($f : RoundingFunction) $x) => do
+    match ← core q(inferInstance) (some q(inferInstance)) x with
+    | .positive h =>
+      assertInstancesCommute
+      return .nonnegative q(($f).apply_nonneg ($h).le)
+    | .nonnegative h =>
+      assertInstancesCommute
+      return .nonnegative q(($f).apply_nonneg $h)
+    | _ => pure .none
+  | _ => pure .none
 
 lemma apply_le_of_le_natCast {f : RoundingFunction} {x : ℝ} {n : ℕ} (h : x ≤ n) : f x ≤ n := by
   grw [h, f.apply_natCast]

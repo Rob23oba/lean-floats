@@ -13,17 +13,7 @@ def roundReal (x : ℝ) (zeroSign : SimpleSign := 1)
     (round : RoundingFunction := .tiesToEven) : UnboundedFloat fmt :=
   let e := fmt.getExponent x
   let x' : ℝ := round (x / base ^ e) * base ^ e
-  ofValidNNReal (.ofValue x zeroSign) x'.nnabs (.abs ?_)
-where finally
-  refine .intro_le fmt.minExp_le_getExponent ?_
-  rw [← Nat.cast_le (α := ℤ), Int.natCast_natAbs, abs_le]
-  have := fmt.abs_lt_zpow_getExponent (x := x)
-  rw [zpow_add₀ (by simp), ← div_lt_iff₀' (by simp),
-    ← abs_of_nonneg (a := (base ^ e : ℝ)) (by simp), ← abs_div, abs_lt] at this
-  grw [← this.1, this.2]
-  norm_cast
-  rw [RoundingFunction.apply_intCast, RoundingFunction.apply_natCast]
-  simp
+  ofValidNNReal (.ofValue x zeroSign) x'.nnabs (.abs (fmt.isRounded_round x))
 
 def roundNNReal (s : SimpleSign) (x : NNReal)
     (round : RoundingFunction := .tiesToEven) : UnboundedFloat fmt :=
@@ -53,6 +43,16 @@ lemma sign_roundReal (x zs round) :
 lemma sign_roundNNReal (s x round) :
     (roundNNReal s x round : UnboundedFloat fmt).sign = s := by
   simp [roundNNReal_eq_roundReal, SimpleSign.ofValue_coe_mul_eq_self]
+
+lemma toFiniteReal_roundReal (x zs round) :
+    (roundReal x zs round : UnboundedFloat fmt).toFiniteReal =
+      round (x / base ^ fmt.getExponent x) * base ^ fmt.getExponent x := by
+  rcases lt_trichotomy x 0 with hlt | heq | hgt
+  · simp [roundReal, abs_of_nonpos, round.apply_nonpos, div_nonpos_iff,
+      hlt, hlt.le, SimpleSign.ofValue_of_neg]
+  · simp [roundReal, heq]
+  · simp [roundReal, round.apply_nonneg, div_nonneg_iff,
+      hgt, hgt.le, SimpleSign.ofValue_of_pos]
 
 lemma roundReal_eq_roundReal_ofValue (x zs round) :
     (roundReal x zs round : UnboundedFloat fmt) = roundReal x (.ofValue x zs) round := by
@@ -91,6 +91,24 @@ lemma roundNNReal_sign_inj {s s' x round} :
 lemma roundReal_sign_inj {x zs zs' round} :
     (roundReal x zs round : UnboundedFloat fmt) = roundReal x zs' round ↔ x = 0 → zs = zs' := by
   simp [roundReal_eq_roundNNReal]
+
+@[gcongr]
+lemma roundReal_mono {x y : ℝ} {zs round} (h : x ≤ y) :
+    (roundReal x zs round : UnboundedFloat fmt) ≤ roundReal y zs round := by
+  simpa [UnboundedFloat.le_def, toEReal_eq_toFiniteReal_of_isFinite, -EReal.coe_mul,
+    toFiniteReal_roundReal] using fmt.round_mono h
+
+@[gcongr]
+lemma roundNNReal_one_mono {x y : NNReal} {round} (h : x ≤ y) :
+    (roundNNReal 1 x round : UnboundedFloat fmt) ≤ roundNNReal 1 y round := by
+  simp only [roundNNReal_eq_roundReal, SimpleSign.coe_one, one_mul]
+  gcongr
+
+@[gcongr]
+lemma roundNNReal_one_anti {x y : NNReal} {round} (h : x ≤ y) :
+    (roundNNReal (-1) y round : UnboundedFloat fmt) ≤ roundNNReal (-1) x round := by
+  simp only [roundNNReal_eq_roundReal, SimpleSign.coe_neg_one, neg_mul, one_mul]
+  gcongr
 
 lemma roundReal_eq_ofValidReal {x : ℝ} (h : fmt.IsRounded x) (zs : SimpleSign) :
     roundReal x zs round = ofValidReal x h zs := by

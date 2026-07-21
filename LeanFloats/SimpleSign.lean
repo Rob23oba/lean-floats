@@ -138,6 +138,8 @@ instance : BoundedOrder SimpleSign where
 @[simp] lemma not_one_lt : ∀ {s : SimpleSign}, ¬ 1 < s := by decide
 @[simp] lemma not_lt_neg_one : ∀ {s : SimpleSign}, ¬ s < -1 := by decide
 
+lemma lt_iff_eq_neg_one_and_eq_one : ∀ {s s' : SimpleSign}, s < s' ↔ s = -1 ∧ s' = 1 := by decide
+
 @[simp] lemma bot_eq_neg_one : (⊥ : SimpleSign) = -1 := rfl
 @[simp] lemma top_eq_one : (⊤ : SimpleSign) = 1 := rfl
 
@@ -263,6 +265,36 @@ lemma coe_mul_self_right [Monoid α] [HasDistribNeg α]
     (s : SimpleSign) (x : α) : x * s * s = x := by
   rw [mul_assoc, coe_mul_self, mul_one]
 
+@[simp]
+lemma coe_signType_eq_one_iff {s : SimpleSign} : (s : SignType) = 1 ↔ s = 1 := by
+  cases s <;> simp
+
+@[simp]
+lemma coe_signType_eq_neg_one_iff {s : SimpleSign} : (s : SignType) = -1 ↔ s = -1 := by
+  cases s <;> simp
+
+@[simp]
+lemma coe_eq_one_iff [AddGroupWithOne α] [CharZero α] {s : SimpleSign} :
+    (s : α) = 1 ↔ s = 1 := by
+  cases s <;> simp; norm_cast
+
+@[simp]
+lemma coe_eq_neg_one_iff [AddGroupWithOne α] [CharZero α] {s : SimpleSign} :
+    (s : α) = -1 ↔ s = -1 := by
+  cases s <;> simp; norm_cast
+
+@[simp]
+lemma coe_pos_iff [AddGroup α] [One α] [PartialOrder α]
+    [ZeroLEOneClass α] [NeZero (1 : α)] [AddLeftStrictMono α]
+    {s : SimpleSign} : (0 : α) < s ↔ s = 1 := by
+  cases s <;> simp [zero_le_one.not_gt]
+
+@[simp]
+lemma coe_neg_iff [AddGroup α] [One α] [PartialOrder α]
+    [ZeroLEOneClass α] [NeZero (1 : α)] [AddLeftStrictMono α]
+    {s : SimpleSign} : s < (0 : α) ↔ s = -1 := by
+  cases s <;> simp [zero_le_one.not_gt]
+
 def ofValue [LinearOrder α] [Zero α] (x : α) (zeroSign : SimpleSign := 1) : SimpleSign :=
   match compare x 0 with
   | .lt => -1
@@ -285,6 +317,23 @@ lemma ofValue_mul_abs [Ring α] [LinearOrder α] [IsOrderedRing α] (x : α) (zs
 lemma abs_mul_ofValue [Ring α] [LinearOrder α] [IsOrderedRing α] (x : α) (zs : SimpleSign) :
     |x| * ofValue x zs = x := by
   rw [commute_coe_right, ofValue_mul_abs]
+
+@[simp]
+lemma ofValue_mul_self [Ring α] [LinearOrder α] [IsOrderedRing α] (x : α) (zs : SimpleSign) :
+    ofValue x zs * x = |x| := by
+  rw [ofValue]
+  split <;> rename_i hcmp
+  · rw [compare_lt_iff_lt] at hcmp
+    simp [abs_of_neg hcmp]
+  · rw [compare_eq_iff_eq] at hcmp
+    simp [hcmp]
+  · rw [compare_gt_iff_gt] at hcmp
+    simp [abs_of_pos hcmp]
+
+@[simp]
+lemma self_mul_ofValue [Ring α] [LinearOrder α] [IsOrderedRing α] (x : α) (zs : SimpleSign) :
+    x * ofValue x zs = |x| := by
+  rw [commute_coe_right, ofValue_mul_self]
 
 @[simp]
 lemma ofValue_zero [LinearOrder α] [Zero α] (zs : SimpleSign) : ofValue (0 : α) zs = zs := by
@@ -348,6 +397,12 @@ lemma ofValue_neg_one_eq_neg_one_iff [LinearOrder α] [Zero α] {x : α} :
     intro hpos
     simp [ofValue_of_pos hpos]
   · exact ofValue_of_nonpos
+
+@[gcongr]
+lemma ofValue_mono [LinearOrder α] [Zero α] {x y : α} {zs : SimpleSign}
+    (h : x ≤ y) : ofValue x zs ≤ ofValue y zs := by
+  rcases lt_trichotomy x 0 with _ | _ | _ <;>
+    cases zs <;> simp [ofValue_of_neg, ofValue_of_pos, *] <;> grind
 
 @[simp]
 lemma ofValue_neg_neg [LinearOrder α] [AddCommGroup α] [IsOrderedAddMonoid α] {x : α} {s : SimpleSign} :

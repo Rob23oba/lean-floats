@@ -344,15 +344,15 @@ protected lemma equiv_def {a b : RealFloat fmt} : a ≈ b ↔ a ≠ nan ∧ b �
 protected lemma compare_def {a b : RealFloat fmt} :
     a.compare b = if a ≠ nan ∧ b ≠ nan then some (compare a.toEReal b.toEReal) else none := (rfl)
 
-@[simp, norm_cast]
+@[simp, norm_cast, gcongr]
 lemma toUnbounded_le {x y : RealFloat fmt} : x.toUnbounded ≤ y.toUnbounded ↔ x ≤ y := by
   simp [RealFloat.le_def, UnboundedFloat.le_def]
 
-@[simp, norm_cast]
+@[simp, norm_cast, gcongr]
 lemma toUnbounded_lt {x y : RealFloat fmt} : x.toUnbounded < y.toUnbounded ↔ x < y := by
   simp [RealFloat.lt_def, UnboundedFloat.lt_def]
 
-@[simp, norm_cast]
+@[simp, norm_cast, gcongr]
 lemma toUnbounded_equiv {x y : RealFloat fmt} : x.toUnbounded ≈ y.toUnbounded ↔ x ≈ y := by
   simp [RealFloat.equiv_def, UnboundedFloat.equiv_def]
 
@@ -360,19 +360,19 @@ lemma toUnbounded_equiv {x y : RealFloat fmt} : x.toUnbounded ≈ y.toUnbounded 
 lemma compare_toUnbounded {x y : RealFloat fmt} : x.toUnbounded.compare y.toUnbounded = x.compare y := by
   simp [RealFloat.compare_def, UnboundedFloat.compare_def]
 
-@[simp]
+@[simp, gcongr]
 lemma ofUnboundedInRange_le {x y : UnboundedFloat fmt}
     (hx : fmt.InRange x.toFiniteReal) (hy : fmt.InRange y.toFiniteReal) :
     ofUnboundedInRange x hx ≤ ofUnboundedInRange y hy ↔ x ≤ y := by
   simp [← toUnbounded_le]
 
-@[simp]
+@[simp, gcongr]
 lemma ofUnboundedInRange_lt {x y : UnboundedFloat fmt}
     (hx : fmt.InRange x.toFiniteReal) (hy : fmt.InRange y.toFiniteReal) :
     ofUnboundedInRange x hx < ofUnboundedInRange y hy ↔ x < y := by
   simp [← toUnbounded_lt]
 
-@[simp]
+@[simp, gcongr]
 lemma ofUnboundedInRange_equiv {x y : UnboundedFloat fmt}
     (hx : fmt.InRange x.toFiniteReal) (hy : fmt.InRange y.toFiniteReal) :
     ofUnboundedInRange x hx ≈ ofUnboundedInRange y hy ↔ x ≈ y := by
@@ -456,7 +456,7 @@ instance : Std.Symm (α := RealFloat fmt) (· ≈ ·) := ⟨fun _ _ => RealFloat
 @[simp] lemma compare_nan_left {a : RealFloat fmt} : nan.compare a = none := by simp
 @[simp] lemma compare_nan_right {a : RealFloat fmt} : a.compare nan = none := by simp
 
-@[simp] lemma infinity_le_infinity_iff {s s' : SimpleSign} :
+@[simp, gcongr] lemma infinity_le_infinity_iff {s s' : SimpleSign} :
     (infinity s : RealFloat fmt) ≤ infinity s' ↔ s ≤ s' := by
   cases s <;> cases s' <;> simp [RealFloat.le_def]
 
@@ -480,7 +480,7 @@ instance : Std.Symm (α := RealFloat fmt) (· ≈ ·) := ⟨fun _ _ => RealFloat
     ofValidEReal x h zs ≤ (ofValidEReal x' h' zs' : RealFloat fmt) ↔ x ≤ x' := by
   simp [RealFloat.le_def]
 
-@[simp] lemma infinity_lt_infinity_iff {s s' : SimpleSign} :
+@[simp, gcongr] lemma infinity_lt_infinity_iff {s s' : SimpleSign} :
     (infinity s : RealFloat fmt) < infinity s' ↔ s < s' := by
   cases s <;> cases s' <;> simp [RealFloat.lt_def]
 
@@ -630,11 +630,11 @@ lemma toFiniteReal_neg (x : RealFloat fmt) : (-x).toFiniteReal = -x.toFiniteReal
 lemma toEReal_neg (x : RealFloat fmt) : (-x).toEReal = -x.toEReal := by
   simp [← toEReal_toUnbounded]
 
-@[simp]
+@[simp, gcongr]
 protected lemma neg_le_neg_iff {x y : RealFloat fmt} : -x ≤ -y ↔ y ≤ x := by
   simp [RealFloat.le_def, and_left_comm]
 
-@[simp]
+@[simp, gcongr]
 protected lemma neg_lt_neg_iff {x y : RealFloat fmt} : -x < -y ↔ y < x := by
   simp [RealFloat.lt_def, and_left_comm]
 
@@ -713,5 +713,21 @@ lemma sign_ofUnboundedInRange {x : UnboundedFloat fmt} (h) :
 
 @[simp] lemma sign_neg (x : RealFloat fmt) : (-x).sign = -x.sign := by cases x <;> simp
 @[simp] lemma sign_eq_zero_iff {x : RealFloat fmt} : x.sign = 0 ↔ x = nan := by cases x <;> simp
+
+lemma sign_of_toFiniteReal_pos {x : RealFloat fmt} (hx : 0 < x.toFiniteReal) :
+    x.sign = 1 := by
+  cases x <;> simp_all [mul_pos_iff]
+
+lemma sign_of_toFiniteReal_neg {x : RealFloat fmt} (hx : x.toFiniteReal < 0) :
+    x.sign = -1 := by
+  cases x <;> simp_all [mul_neg_iff]
+
+lemma le_of_sign {x y : RealFloat fmt} (hx : x.sign = -1) (hy : y.sign = 1) : x ≤ y := by
+  cases x <;> cases y <;> simp_all [le_trans (b := (0 : ℝ))]
+
+lemma sign_le_sign_of_toFiniteReal_ne_zero {x y : RealFloat fmt}
+    (hxy : x ≤ y) (hy : y.toFiniteReal ≠ 0) : x.sign ≤ y.sign := by
+  simp_all [← sign_toUnbounded, ← toUnbounded_le, ← toFiniteReal_toUnbounded,
+    UnboundedFloat.sign_le_sign_of_toFiniteReal_ne_zero]
 
 end LeanFloats.RealFloat

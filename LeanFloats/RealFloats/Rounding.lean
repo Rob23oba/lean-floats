@@ -217,6 +217,79 @@ lemma roundReal_sign_inj {x zs zs' round} :
     (roundReal x zs round : RealFloat fmt) = roundReal x zs' round ↔ x = 0 → zs = zs' := by
   simp [roundReal_eq_roundNNReal]
 
+lemma le_maxFinite_one_iff {x : RealFloat fmt} :
+    x ≤ maxFinite 1 ↔ x.IsFinite ∨ x = infinity (-1) := by
+  cases x <;> simp [maxFinite, FloatFormat.le_maxValue_of_isValidFloat, *]
+
+lemma maxFinite_neg_one_le_iff {x : RealFloat fmt} :
+    maxFinite (-1) ≤ x ↔ x.IsFinite ∨ x = infinity 1 := by
+  cases x <;> simp [maxFinite, FloatFormat.neg_maxValue_le_of_isValidFloat, *]
+
+lemma IsFinite.le_overflowValue_one {x : RealFloat fmt} (h : x.IsFinite) :
+    x ≤ overflowValue 1 round := by
+  rw [overflowValue]
+  split <;> simp [le_maxFinite_one_iff, h]
+
+lemma IsFinite.overflowValue_neg_one_le {x : RealFloat fmt} (h : x.IsFinite) :
+    overflowValue (-1) round ≤ x := by
+  rw [overflowValue]
+  split <;> simp [maxFinite_neg_one_le_iff, h]
+
+@[gcongr]
+lemma maxFinite_mono {s s' : SimpleSign} (h : s ≤ s') :
+    (maxFinite s : RealFloat fmt) ≤ maxFinite s' := by
+  rcases h.lt_or_eq with lt | rfl
+  · apply le_of_sign <;> simp_all [SimpleSign.lt_iff_eq_neg_one_and_eq_one]
+  · simp
+
+@[gcongr]
+lemma overflowValue_mono {s s' : SimpleSign} (h : s ≤ s') :
+    (overflowValue s round : RealFloat fmt) ≤ overflowValue s' round := by
+  rcases h.lt_or_eq with lt | rfl
+  · apply le_of_sign <;> simp_all [SimpleSign.lt_iff_eq_neg_one_and_eq_one]
+  · simp
+
+@[gcongr]
+lemma ofUnbounded_mono {x y : UnboundedFloat fmt} (h : x ≤ y) :
+    (ofUnbounded x round : RealFloat fmt) ≤ ofUnbounded y round := by
+  by_cases! hf : ¬ x.IsFinite ∨ ¬ y.IsFinite
+  · cases x <;> cases y <;> simp_all
+  obtain ⟨hx, hy⟩ := hf
+  have h' := h
+  simp only [UnboundedFloat.le_def, ne_eq, hx, UnboundedFloat.IsFinite.ne_nan, not_false_eq_true,
+    hy, UnboundedFloat.toEReal_eq_toFiniteReal_of_isFinite, EReal.coe_le_coe_iff, true_and] at h'
+  simp only [ofUnbounded]
+  split <;> split
+  · gcongr
+  · have := fmt.pos_of_le_of_inRange_of_not_inRange h' ‹_› ‹_›
+    simp [UnboundedFloat.sign_of_toFiniteReal_pos, IsFinite.le_overflowValue_one,
+      SimpleSign.ofValue_of_pos, *]
+  · have := fmt.lt_zero_of_le_of_not_inRange_of_inRange h' ‹_› ‹_›
+    simp [UnboundedFloat.sign_of_toFiniteReal_neg, IsFinite.overflowValue_neg_one_le,
+      SimpleSign.ofValue_of_neg, *]
+  · have : x.sign ≤ y.sign := by
+      apply UnboundedFloat.sign_le_sign_of_toFiniteReal_ne_zero h
+      intro; simp_all
+    gcongr
+
+@[gcongr]
+lemma roundReal_mono {x y : ℝ} {zs round} (h : x ≤ y) :
+    (roundReal x zs round : RealFloat fmt) ≤ roundReal y zs round := by
+  simp only [← ofUnbounded_roundReal]
+  gcongr
+
+@[gcongr]
+lemma roundNNReal_one_mono {x y : NNReal} {round} (h : x ≤ y) :
+    (roundNNReal 1 x round : RealFloat fmt) ≤ roundNNReal 1 y round := by
+  simp only [← ofUnbounded_roundNNReal]
+  gcongr
+
+@[gcongr]
+lemma roundNNReal_one_anti {x y : NNReal} {round} (h : x ≤ y) :
+    (roundNNReal (-1) y round : RealFloat fmt) ≤ roundNNReal (-1) x round := by
+  simp only [← ofUnbounded_roundNNReal]
+  gcongr
+
 lemma roundReal_eq_of_isRounded {x : ℝ} (h : fmt.IsRounded x) (zs : SimpleSign) :
     roundReal x zs round =
       if h' : fmt.InRange x then ofValidReal x ⟨h, h'⟩ zs

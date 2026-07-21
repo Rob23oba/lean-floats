@@ -265,7 +265,7 @@ instance : @Std.Symm (UnboundedFloat fmt) (· ≈ ·) := ⟨fun _ _ => Unbounded
 @[simp] lemma compare_nan_left {a : UnboundedFloat fmt} : nan.compare a = none := by simp
 @[simp] lemma compare_nan_right {a : UnboundedFloat fmt} : a.compare nan = none := by simp
 
-@[simp] lemma infinity_le_infinity_iff {s s' : SimpleSign} :
+@[simp, gcongr] lemma infinity_le_infinity_iff {s s' : SimpleSign} :
     (infinity s : UnboundedFloat fmt) ≤ infinity s' ↔ s ≤ s' := by
   cases s <;> cases s' <;> simp [UnboundedFloat.le_def]
 
@@ -289,7 +289,7 @@ instance : @Std.Symm (UnboundedFloat fmt) (· ≈ ·) := ⟨fun _ _ => Unbounded
     ofValidEReal x h zs ≤ (ofValidEReal x' h' zs' : UnboundedFloat fmt) ↔ x ≤ x' := by
   simp [UnboundedFloat.le_def]
 
-@[simp] lemma infinity_lt_infinity_iff {s s' : SimpleSign} :
+@[simp, gcongr] lemma infinity_lt_infinity_iff {s s' : SimpleSign} :
     (infinity s : UnboundedFloat fmt) < infinity s' ↔ s < s' := by
   cases s <;> cases s' <;> simp [UnboundedFloat.lt_def]
 
@@ -426,11 +426,11 @@ lemma toFiniteReal_neg (x : UnboundedFloat fmt) : (-x).toFiniteReal = -x.toFinit
 lemma toEReal_neg (x : UnboundedFloat fmt) : (-x).toEReal = -x.toEReal := by
   cases x <;> simp
 
-@[simp]
+@[simp, gcongr]
 protected lemma neg_le_neg_iff {x y : UnboundedFloat fmt} : -x ≤ -y ↔ y ≤ x := by
   simp [UnboundedFloat.le_def, and_left_comm]
 
-@[simp]
+@[simp, gcongr]
 protected lemma neg_lt_neg_iff {x y : UnboundedFloat fmt} : -x < -y ↔ y < x := by
   simp [UnboundedFloat.lt_def, and_left_comm]
 
@@ -490,5 +490,22 @@ def sign (x : UnboundedFloat fmt) : SignType :=
 @[simp] lemma sign_eq_zero_iff {x : UnboundedFloat fmt} : x.sign = 0 ↔ x = nan := by cases x <;> simp
 
 lemma sign_abs (x : UnboundedFloat fmt) : x.abs.sign = if x = nan then 0 else 1 := by cases x <;> simp
+
+lemma sign_of_toFiniteReal_pos {x : UnboundedFloat fmt} (hx : 0 < x.toFiniteReal) :
+    x.sign = 1 := by
+  cases x <;> simp_all [mul_pos_iff]
+
+lemma sign_of_toFiniteReal_neg {x : UnboundedFloat fmt} (hx : x.toFiniteReal < 0) :
+    x.sign = -1 := by
+  cases x <;> simp_all [mul_neg_iff]
+
+lemma le_of_sign {x y : UnboundedFloat fmt} (hx : x.sign = -1) (hy : y.sign = 1) : x ≤ y := by
+  cases x <;> cases y <;> simp_all [le_trans (b := (0 : ℝ))]
+
+lemma sign_le_sign_of_toFiniteReal_ne_zero {x y : UnboundedFloat fmt}
+    (hxy : x ≤ y) (hy : y.toFiniteReal ≠ 0) : x.sign ≤ y.sign := by
+  cases x <;> cases y <;> try simp_all; done
+  rename_i s x h s' x' h'
+  cases s <;> cases s' <;> simp_all [not_le_of_gt (lt_of_lt_of_le (b := (0 : ℝ)) _ _), pos_of_ne_zero]
 
 end LeanFloats.UnboundedFloat
