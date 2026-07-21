@@ -423,6 +423,7 @@ protected def div (a b : UnboundedFloat fmt) (round : RoundingFunction := .tiesT
 lemma ofValidNNReal_div_infinity {s s' : SimpleSign} {x h} :
     (ofValidNNReal s' x h).div (infinity s : UnboundedFloat fmt) round = ofValidNNReal (s' * s) 0 (by simp) := (rfl)
 
+@[simp]
 lemma zero_div_zero : (0 : UnboundedFloat fmt).div 0 round = nan := by
   simp [UnboundedFloat.div, zero_eq_ofValidNNReal]
 
@@ -433,6 +434,18 @@ lemma ofValidNNReal_div_ofValidNNReal {s x h} {s' x' h'} :
       else
         roundNNReal (s * s') (x / x') round := by
   simp [UnboundedFloat.div]
+
+@[simp]
+lemma div_one {x : UnboundedFloat fmt} : (x : UnboundedFloat fmt).div 1 round = x := by
+  cases x <;> simp [ofValidNNReal_div_ofValidNNReal, roundNNReal_eq_ofValidNNReal, one_eq_ofValidNNReal, *]
+
+@[simp]
+lemma neg_div {x y : UnboundedFloat fmt} : (-x : UnboundedFloat fmt).div y round = -x.div y round.opposite := by
+  cases x <;> cases y <;> simp [UnboundedFloat.div, apply_ite (-· : UnboundedFloat fmt → _)]
+
+@[simp]
+lemma div_neg {x y : UnboundedFloat fmt} : (x : UnboundedFloat fmt).div (-y) round = -x.div y round.opposite := by
+  cases x <;> cases y <;> simp [UnboundedFloat.div, apply_ite (-· : UnboundedFloat fmt → _)]
 
 def sqrt (a : UnboundedFloat fmt) (round : RoundingFunction := .tiesToEven) : UnboundedFloat fmt :=
   match a with

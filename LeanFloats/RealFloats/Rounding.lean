@@ -301,12 +301,12 @@ lemma ext_toEReal_sign {a b : RealFloat fmt}
   rw [← toUnbounded_inj]
   apply UnboundedFloat.ext_toEReal_sign <;> simp_all
 
-def add (a b : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
+protected def add (a b : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
   ofUnbounded (a.toUnbounded.add b.toUnbounded round) round
 
 lemma add_eq_ofUnbounded {x y : RealFloat fmt} :
     x.add y round = ofUnbounded (x.toUnbounded.add y.toUnbounded round) round := by
-  simp [add]
+  simp [RealFloat.add]
 
 @[simp] lemma nan_add (a : RealFloat fmt) (round : RoundingFunction) : nan.add a round = nan := by
   simp [add_eq_ofUnbounded]
@@ -402,16 +402,150 @@ protected lemma add_equiv {a b c d : RealFloat fmt} {round : RoundingFunction}
 -/
 
 @[simp]
-def sub (a b : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
+protected def sub (a b : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
   a.add (-b) round
 
-def mul (a b : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
+protected def mul (a b : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
   ofUnbounded (a.toUnbounded.mul b.toUnbounded round) round
 
-def div (a b : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
+lemma mul_eq_ofUnbounded {x y : RealFloat fmt} :
+    x.mul y round = ofUnbounded (x.toUnbounded.mul y.toUnbounded round) round := by
+  simp [RealFloat.mul]
+
+@[simp] lemma nan_mul {a : RealFloat fmt} : nan.mul a round = nan := by simp [mul_eq_ofUnbounded]
+@[simp] lemma mul_nan {a : RealFloat fmt} : a.mul nan round = nan := by simp [mul_eq_ofUnbounded]
+@[simp] lemma infinity_mul_infinity {s s' : SimpleSign} :
+    (infinity s : RealFloat fmt).mul (infinity s') round = infinity (s * s') := by simp [mul_eq_ofUnbounded]
+
+lemma infinity_mul_ofValidNNReal {s : SimpleSign} {s' x h} :
+    (infinity s : RealFloat fmt).mul (ofValidNNReal s' x h) round =
+      if x = 0 then nan else infinity (s * s') := by
+  simp [mul_eq_ofUnbounded, UnboundedFloat.infinity_mul_ofValidNNReal, apply_ite (ofUnbounded · round)]
+
+lemma ofValidNNReal_mul_infinity {s : SimpleSign} {s' x h} :
+    (ofValidNNReal s' x h).mul (infinity s : RealFloat fmt) round =
+      if x = 0 then nan else infinity (s' * s) := by
+  simp [mul_eq_ofUnbounded, UnboundedFloat.ofValidNNReal_mul_infinity, apply_ite (ofUnbounded · round)]
+
+lemma ofValidNNReal_mul_ofValidNNReal {s x h} {s' x' h'} :
+    (ofValidNNReal s x h).mul (ofValidNNReal s' x' h' : RealFloat fmt) round =
+      roundNNReal (s * s') (x * x') round := by
+  simp [mul_eq_ofUnbounded, UnboundedFloat.ofValidNNReal_mul_ofValidNNReal]
+
+@[simp]
+lemma ofUnboundedInRange_mul_ofUnboundedInRange {x y : UnboundedFloat fmt}
+    (hx : fmt.InRange x.toFiniteReal) (hy : fmt.InRange y.toFiniteReal) :
+    (ofUnboundedInRange x hx).mul (ofUnboundedInRange y hy) round = ofUnbounded (x.mul y round) round := by
+  simp [mul_eq_ofUnbounded]
+
+protected lemma mul_comm (x y : RealFloat fmt) :
+    x.mul y round = y.mul x round := by
+  simp [mul_eq_ofUnbounded, UnboundedFloat.mul_comm]
+
+@[simp]
+protected lemma neg_mul (x y : RealFloat fmt) :
+    (-x).mul y round = -x.mul y round.opposite := by
+  simp [mul_eq_ofUnbounded, neg_ofUnbounded]
+
+@[simp]
+protected lemma mul_neg (x y : RealFloat fmt) :
+    x.mul (-y) round = -x.mul y round.opposite := by
+  simp [mul_eq_ofUnbounded, neg_ofUnbounded]
+
+@[simp] protected lemma mul_one (x : RealFloat fmt) : x.mul 1 round = x := by simp [mul_eq_ofUnbounded]
+@[simp] protected lemma one_mul (x : RealFloat fmt) : (1 : RealFloat fmt).mul x round = x := by simp [mul_eq_ofUnbounded]
+
+@[simp] lemma infinity_mul_zero {s : SimpleSign} :
+    (infinity s : RealFloat fmt).mul 0 round = nan := by simp [mul_eq_ofUnbounded]
+
+@[simp] lemma zero_mul_infinity {s : SimpleSign} :
+    (0 : RealFloat fmt).mul (infinity s) round = nan := by simp [mul_eq_ofUnbounded]
+
+protected def div (a b : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
   ofUnbounded (a.toUnbounded.div b.toUnbounded round) round
 
-def sqrt (a : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
-  ofUnbounded a.toUnbounded.sqrt round
+lemma div_eq_ofUnbounded {x y : RealFloat fmt} :
+    x.div y round = ofUnbounded (x.toUnbounded.div y.toUnbounded round) round := by
+  simp [RealFloat.div]
+
+@[simp] lemma nan_div {a : RealFloat fmt} : nan.div a round = nan := by simp [div_eq_ofUnbounded]
+@[simp] lemma div_nan {a : RealFloat fmt} : a.div nan round = nan := by simp [div_eq_ofUnbounded]
+
+@[simp] lemma infinity_div_infinity {s s' : SimpleSign} :
+    (infinity s : RealFloat fmt).div (infinity s') round = nan := by simp [div_eq_ofUnbounded]
+@[simp] lemma infinity_div_ofValidNNReal {s s' : SimpleSign} {x h} :
+    (infinity s : RealFloat fmt).div (ofValidNNReal s' x h) round = infinity (s * s') := by simp [div_eq_ofUnbounded]
+
+lemma ofValidNNReal_div_infinity {s s' : SimpleSign} {x h} :
+    (ofValidNNReal s' x h).div (infinity s : RealFloat fmt) round = ofValidNNReal (s' * s) 0 (by simp) := by
+  simp [div_eq_ofUnbounded, UnboundedFloat.ofValidNNReal_div_infinity, ofUnbounded]
+
+@[simp]
+lemma ofUnboundedInRange_div_ofUnboundedInRange {x y : UnboundedFloat fmt}
+    (hx : fmt.InRange x.toFiniteReal) (hy : fmt.InRange y.toFiniteReal) :
+    (ofUnboundedInRange x hx).div (ofUnboundedInRange y hy) round = ofUnbounded (x.div y round) round := by
+  simp [div_eq_ofUnbounded]
+
+@[simp]
+lemma zero_div_zero : (0 : RealFloat fmt).div 0 round = nan := by
+  simp [div_eq_ofUnbounded]
+
+lemma ofValidNNReal_div_ofValidNNReal {s x h} {s' x' h'} :
+    (ofValidNNReal s x h).div (ofValidNNReal s' x' h' : RealFloat fmt) round =
+      if x' = 0 then
+        if x = 0 then .nan else .infinity (s * s')
+      else
+        roundNNReal (s * s') (x / x') round := by
+  simp [div_eq_ofUnbounded, UnboundedFloat.ofValidNNReal_div_ofValidNNReal, apply_ite (ofUnbounded · round)]
+
+@[simp]
+lemma div_one {x : RealFloat fmt} : (x : RealFloat fmt).div 1 round = x := by
+  simp [div_eq_ofUnbounded]
+
+@[simp]
+lemma neg_div {x y : RealFloat fmt} : (-x : RealFloat fmt).div y round = -x.div y round.opposite := by
+  simp [div_eq_ofUnbounded, neg_ofUnbounded]
+
+@[simp]
+lemma div_neg {x y : RealFloat fmt} : (x : RealFloat fmt).div (-y) round = -x.div y round.opposite := by
+  simp [div_eq_ofUnbounded, neg_ofUnbounded]
+
+protected def sqrt (a : RealFloat fmt) (round : RoundingFunction := .tiesToEven) : RealFloat fmt :=
+  ofUnbounded (a.toUnbounded.sqrt round) round
+
+lemma sqrt_eq_ofUnbounded {x : RealFloat fmt} :
+    x.sqrt round = ofUnbounded (x.toUnbounded.sqrt round) round := by
+  simp [RealFloat.sqrt]
+
+@[simp] lemma sqrt_nan : (nan : RealFloat fmt).sqrt round = nan := by simp [sqrt_eq_ofUnbounded]
+@[simp] lemma sqrt_infinity_one : (infinity 1 : RealFloat fmt).sqrt round = infinity 1 := by simp [sqrt_eq_ofUnbounded]
+@[simp] lemma sqrt_infinity_neg_one : (infinity (-1) : RealFloat fmt).sqrt round = nan := by simp [sqrt_eq_ofUnbounded]
+
+lemma sqrt_ofValidNNReal {s x h} :
+    (ofValidNNReal s x h : RealFloat fmt).sqrt round =
+      if (s * x : ℝ) < 0 then .nan else roundReal x.sqrt s round := by
+  simp [sqrt_eq_ofUnbounded, UnboundedFloat.sqrt_ofValidNNReal, apply_ite (ofUnbounded · round)]
+
+@[simp]
+lemma sqrt_ofUnboundedInRange {x : UnboundedFloat fmt} (hx : fmt.InRange x.toFiniteReal) :
+    (ofUnboundedInRange x hx).sqrt round = ofUnbounded (x.sqrt round) round := by
+  simp [sqrt_eq_ofUnbounded]
+
+lemma sqrt_ofValidNNReal_one {x h} :
+    (ofValidNNReal 1 x h : RealFloat fmt).sqrt round = roundReal x.sqrt 1 round := by
+  simp [sqrt_ofValidNNReal]
+
+lemma sqrt_ofValidNNReal_neg_one {x h} :
+    (ofValidNNReal (-1) x h : RealFloat fmt).sqrt round =
+      if x = 0 then -0 else nan := by
+  simp [sqrt_eq_ofUnbounded, UnboundedFloat.sqrt_ofValidNNReal_neg_one, apply_ite (ofUnbounded · round), ofUnbounded_neg]
+
+@[simp]
+lemma sqrt_zero : (0 : RealFloat fmt).sqrt = 0 := by
+  simp [sqrt_eq_ofUnbounded]
+
+@[simp]
+lemma sqrt_neg_zero : (-0 : RealFloat fmt).sqrt = -0 := by
+  simp [sqrt_eq_ofUnbounded, ofUnbounded_neg]
 
 end LeanFloats.RealFloat
