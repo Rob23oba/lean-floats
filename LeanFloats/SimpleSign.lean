@@ -1,6 +1,5 @@
 module
-public import Mathlib.Analysis.Normed.Ring.Lemmas
-public import Mathlib.Data.Sign.Defs
+public import LeanFloats.ForMathlib
 
 @[expose] public section
 
@@ -212,6 +211,10 @@ lemma inv_coe [Group α] [HasDistribNeg α] (s : SimpleSign) :
 @[simp]
 lemma abs_coe [Ring α] [LinearOrder α] [IsOrderedRing α] (s : SimpleSign) :
     |(s : α)| = 1 := by cases s <;> simp
+
+@[simp]
+lemma erealAbs_coe (s : SimpleSign) : (s : EReal).abs = 1 := by
+  cases s <;> simp
 
 @[simp]
 lemma nnabs_coe (s : SimpleSign) : Real.nnabs s = 1 := by cases s <;> ext <;> simp

@@ -20,11 +20,6 @@ namespace UnboundedFloat
 
 variable {fmt : FloatFormat base}
 
-def toReal : UnboundedFloat fmt → ℝ
-  | .ofValidNNReal s x _h => s * x
-  | .infinity s => s * base ^ fmt.infExp
-  | .nan => 0
-
 def toFiniteReal : UnboundedFloat fmt → ℝ
   | .ofValidNNReal s x _h => s * x
   | .infinity _ => 0
@@ -87,21 +82,6 @@ lemma ofValidReal_ne_nan (x : ℝ) (h : fmt.IsRounded x) (zs : SimpleSign) :
     ofValidReal x h zs ≠ nan := (isFinite_ofValidReal x h zs).ne_nan
 
 @[simp]
-lemma toReal_nan : (nan : UnboundedFloat fmt).toReal = 0 := rfl
-
-@[simp]
-lemma toReal_infinity : (infinity s : UnboundedFloat fmt).toReal = s * base ^ fmt.infExp := rfl
-
-@[simp]
-lemma toReal_ofValidNNReal (s : SimpleSign) (x : NNReal) (h : fmt.IsRounded x) :
-    (ofValidNNReal s x h).toReal = s * x := (rfl)
-
-@[simp]
-lemma toReal_ofValidReal (x : ℝ) (h : fmt.IsRounded x) (zs : SimpleSign) :
-    (ofValidReal x h zs).toReal = x := by
-  simp [ofValidReal]
-
-@[simp]
 lemma toFiniteReal_nan : (nan : UnboundedFloat fmt).toFiniteReal = 0 := rfl
 
 @[simp]
@@ -131,14 +111,14 @@ lemma toEReal_infinity : (infinity s : UnboundedFloat fmt).toEReal = s * ⊤ := 
 lemma toEReal_ofValidNNReal (s : SimpleSign) (x : NNReal) (h : fmt.IsRounded x) :
     (ofValidNNReal s x h).toEReal = s * x := (rfl)
 
-lemma toEReal_eq_toReal_of_isFinite {x : UnboundedFloat fmt} (h : IsFinite x) :
-    x.toEReal = x.toReal := by
+lemma toEReal_eq_toFiniteReal_of_isFinite {x : UnboundedFloat fmt} (h : IsFinite x) :
+    x.toEReal = x.toFiniteReal := by
   cases h; simp [ENNReal.toEReal]
 
 @[simp]
 lemma toEReal_ofValidReal (x : ℝ) (h : fmt.IsRounded x) (zs : SimpleSign) :
     (ofValidReal x h zs).toEReal = x := by
-  simp [toEReal_eq_toReal_of_isFinite]
+  simp [toEReal_eq_toFiniteReal_of_isFinite]
 
 lemma ofValidReal_def (x : ℝ) (h : fmt.IsRounded x) (zs : SimpleSign) :
     ofValidReal x h zs = ofValidNNReal (.ofValue x zs) x.nnabs (by simpa using h.abs) := (rfl)
@@ -256,15 +236,42 @@ instance : InvolutiveNeg (UnboundedFloat fmt) where
   cases x <;> simp [← EReal.coe_neg]
 
 @[simp]
-lemma toReal_neg (x : UnboundedFloat fmt) : (-x).toReal = -x.toReal := by
-  cases x <;> simp
-
-@[simp]
 lemma toFiniteReal_neg (x : UnboundedFloat fmt) : (-x).toFiniteReal = -x.toFiniteReal := by
   cases x <;> simp
 
 @[simp]
 lemma toEReal_neg (x : UnboundedFloat fmt) : (-x).toEReal = -x.toEReal := by
+  cases x <;> simp
+
+protected def abs : UnboundedFloat fmt → UnboundedFloat fmt
+  | .ofValidNNReal _ x h => .ofValidNNReal 1 x h
+  | .infinity _ => .infinity 1
+  | .nan => .nan
+
+@[simp] lemma abs_ofValidNNReal {s x h} : (ofValidNNReal s x h : UnboundedFloat fmt).abs = ofValidNNReal 1 x h := rfl
+@[simp] lemma abs_infinity {s} : (infinity s : UnboundedFloat fmt).abs = infinity 1 := rfl
+@[simp] lemma abs_nan : (nan : UnboundedFloat fmt).abs = nan := rfl
+
+@[simp] protected lemma abs_abs {x : UnboundedFloat fmt} : x.abs.abs = x.abs := by cases x <;> simp
+@[simp] protected lemma abs_neg {x : UnboundedFloat fmt} : (-x).abs = x.abs := by cases x <;> simp
+
+@[simp] lemma abs_eq_nan_iff {x : UnboundedFloat fmt} : x.abs = nan ↔ x = nan := by cases x <;> simp
+@[simp] lemma isFinite_abs_iff {x : UnboundedFloat fmt} : IsFinite x.abs ↔ IsFinite x := by cases x <;> simp
+
+@[simp] lemma abs_ofValidReal {x h zs} :
+    (ofValidReal x h zs : UnboundedFloat fmt).abs = ofValidReal |x| h.abs 1 := by
+  simp [ofValidReal, SimpleSign.ofValue_of_nonneg]
+
+@[simp] lemma abs_ofValidEReal {x h zs} :
+    (ofValidEReal x h zs : UnboundedFloat fmt).abs = ofValidEReal x.abs (by simpa using h.abs) 1 := by
+  cases x <;> simp
+
+@[simp]
+lemma toFiniteReal_abs (x : UnboundedFloat fmt) : x.abs.toFiniteReal = |x.toFiniteReal| := by
+  cases x <;> simp
+
+@[simp]
+lemma toEReal_abs (x : UnboundedFloat fmt) : x.abs.toEReal = x.toEReal.abs := by
   cases x <;> simp
 
 def sign (x : UnboundedFloat fmt) : SignType :=
@@ -284,6 +291,9 @@ def sign (x : UnboundedFloat fmt) : SignType :=
   cases x <;> simp [SimpleSign.ofValue_of_neg, SimpleSign.ofValue_of_pos]
 
 @[simp] lemma sign_neg (x : UnboundedFloat fmt) : (-x).sign = -x.sign := by cases x <;> simp
+@[simp] lemma sign_abs_of_ne_nan {x : UnboundedFloat fmt} (h : x ≠ nan) : x.abs.sign = 1 := by cases x <;> simp_all
 @[simp] lemma sign_eq_zero_iff {x : UnboundedFloat fmt} : x.sign = 0 ↔ x = nan := by cases x <;> simp
+
+lemma sign_abs (x : UnboundedFloat fmt) : x.abs.sign = if x = nan then 0 else 1 := by cases x <;> simp
 
 end LeanFloats.UnboundedFloat

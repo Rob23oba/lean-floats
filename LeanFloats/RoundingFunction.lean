@@ -1,6 +1,8 @@
 module
 public import LeanFloats.SimpleSign
 public import LeanFloats.FloatFormat
+public import Mathlib.Tactic.Order
+public import Mathlib.Order.Filter.AtTopBot.Basic
 
 @[expose] public section
 
@@ -358,6 +360,11 @@ lemma repelsAtInfinity_opposite_iff {f : RoundingFunction} {s : SimpleSign} :
     rw [← (Equiv.neg ℝ).exists_congr (fun _ => Iff.rfl)]
     enter [1, 1, a]; rw [← (Equiv.neg ℝ).forall_congr (fun _ => Iff.rfl)]
   simp [Int.floor_neg]
+
+lemma repelsAtInfinity_iff_repelsAtInfinity_one
+    {f : RoundingFunction} {s : SimpleSign} [f.NegStable] :
+    f.RepelsAtInfinity s ↔ f.RepelsAtInfinity 1 := by
+  cases s <;> simp [← repelsAtInfinity_opposite_iff]
 
 @[simp]
 lemma repelsAtInfinity_balanced_iff {f : RoundingFunction} {s : SimpleSign} :

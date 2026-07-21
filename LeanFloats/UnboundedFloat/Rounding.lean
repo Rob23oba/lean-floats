@@ -73,6 +73,16 @@ lemma neg_roundNNReal {s x round} :
   simp [roundNNReal_eq_roundReal]
 
 @[simp]
+lemma abs_roundNNReal {s x} {round : RoundingFunction} [round.NegStable] :
+    (roundNNReal s x round : UnboundedFloat fmt).abs = roundNNReal 1 x round := by
+  cases s <;> simp [roundNNReal, roundReal, SimpleSign.ofValue_of_nonneg, neg_div]
+
+@[simp]
+lemma abs_roundReal {x zs} {round : RoundingFunction} [round.NegStable] :
+    (roundReal x zs round : UnboundedFloat fmt).abs = roundReal |x| 1 round := by
+  simp [roundReal_eq_roundNNReal, SimpleSign.ofValue_of_nonneg]
+
+@[simp]
 lemma roundNNReal_sign_inj {s s' x round} :
     (roundNNReal s x round : UnboundedFloat fmt) = roundNNReal s' x round ↔ s = s' := by
   grind [sign_roundNNReal]
@@ -142,15 +152,13 @@ lemma ofValidNNReal_eq_neg_zero_iff {s x h} :
   simp [zero_eq_ofValidNNReal]
 
 @[simp] lemma isFinite_ofNat {n} : (ofNat(n) : UnboundedFloat fmt).IsFinite := by simp [ofNat_eq_roundReal_tiesToEven]
+@[simp] lemma abs_ofNat {n} : (ofNat(n) : UnboundedFloat fmt).abs = ofNat(n) := by simp [ofNat_eq_roundReal_tiesToEven]
 
 @[simp] lemma toEReal_zero : (0 : UnboundedFloat fmt).toEReal = 0 := by simp [zero_eq_ofValidNNReal]
 @[simp] lemma toEReal_one : (1 : UnboundedFloat fmt).toEReal = 1 := by simp [one_eq_ofValidNNReal]
 
 @[simp] lemma toFiniteReal_zero : (0 : UnboundedFloat fmt).toFiniteReal = 0 := by simp [zero_eq_ofValidNNReal]
 @[simp] lemma toFiniteReal_one : (1 : UnboundedFloat fmt).toFiniteReal = 1 := by simp [one_eq_ofValidNNReal]
-
-@[simp] lemma toReal_zero : (0 : UnboundedFloat fmt).toReal = 0 := by simp [zero_eq_ofValidNNReal]
-@[simp] lemma toReal_one : (1 : UnboundedFloat fmt).toReal = 1 := by simp [one_eq_ofValidNNReal]
 
 @[simp] lemma sign_ofNat {n : Nat} : (ofNat(n) : UnboundedFloat fmt).sign = 1 := by
   simp [ofNat_eq_roundReal_tiesToEven, SimpleSign.ofValue_of_nonneg]

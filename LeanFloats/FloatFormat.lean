@@ -1,7 +1,5 @@
 module
 public import Mathlib.Algebra.Order.Field.Power
-public import Mathlib.Analysis.Normed.Field.Lemmas
-public import Mathlib.Data.Int.Log
 public import Mathlib.Tactic.Rify
 public import LeanFloats.SimpleSign
 

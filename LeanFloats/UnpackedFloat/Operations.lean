@@ -55,6 +55,11 @@ lemma toUnboundedFloat_neg {fmt : FloatFormat 2} (x : UnpackedFloat) :
   fun_cases toUnboundedFloat <;> simp [UnpackedFloat.neg, toUnboundedFloat_finite]
 
 @[simp]
+lemma toUnboundedFloat_abs {fmt : FloatFormat 2} (x : UnpackedFloat) :
+    toUnboundedFloat x.abs = (toUnboundedFloat x : UnboundedFloat fmt).abs := by
+  fun_cases toUnboundedFloat <;> simp [UnpackedFloat.abs, toUnboundedFloat_finite]
+
+@[simp]
 lemma sub_eq_add_neg (x y : UnpackedFloat) (fmt : Format) : x.sub fmt y = x.add fmt y.neg := by
   cases x <;> cases y <;> simp [UnpackedFloat.add, UnpackedFloat.neg, UnpackedFloat.sub, Int.add_neg_eq_sub]
 
@@ -366,6 +371,24 @@ lemma RealFloat.toFloat_neg (a : RealFloat .binary64) :
 @[simp]
 lemma RealFloat.toFloat32_neg (a : RealFloat .binary32) :
     (-a).toFloat32 = -a.toFloat32 := by simp [← ofFloat32_inj]
+
+@[simp]
+lemma RealFloat.ofFloat_abs (a : Float) :
+    ofFloat a.abs = (ofFloat a).abs := by
+  simp [ofFloat, Float.Model.unpack, Float.abs, Float.Model.abs, Float.Model.pack, ← ofUnbounded_abs]
+
+@[simp]
+lemma RealFloat.ofFloat32_abs (a : Float32) :
+    ofFloat32 a.abs = (ofFloat32 a).abs := by
+  simp [ofFloat32, Float32.Model.unpack, Float32.abs, Float32.Model.abs, Float32.Model.pack, ← ofUnbounded_abs]
+
+@[simp]
+lemma RealFloat.toFloat_abs (a : RealFloat .binary64) :
+    a.abs.toFloat = a.toFloat.abs := by simp [← ofFloat_inj]
+
+@[simp]
+lemma RealFloat.toFloat32_abs (a : RealFloat .binary32) :
+    a.abs.toFloat32 = a.toFloat32.abs := by simp [← ofFloat32_inj]
 
 @[simp]
 lemma RealFloat.ofFloat_sub (a b : Float) :

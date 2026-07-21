@@ -1,5 +1,6 @@
 module
 public import LeanFloats.UnboundedFloat.Basic
+public import Mathlib.Data.EReal.Inv
 
 @[expose] public section
 
@@ -142,14 +143,18 @@ lemma toEReal_infinity : (infinity s : RealFloat fmt).toEReal = s * ⊤ := rfl
 lemma toEReal_ofValidNNReal (s : SimpleSign) (x : NNReal) (h : fmt.IsValidFloat x) :
     (ofValidNNReal s x h).toEReal = s * x := (rfl)
 
-lemma toEReal_eq_toReal_of_isFinite {x : RealFloat fmt} (h : IsFinite x) :
-    x.toEReal = x.toReal := by
+lemma toReal_eq_toFiniteReal_of_isFinite {x : RealFloat fmt} (h : IsFinite x) :
+    x.toReal = x.toFiniteReal := by
+  cases h; simp
+
+lemma toEReal_eq_toFiniteReal_of_isFinite {x : RealFloat fmt} (h : IsFinite x) :
+    x.toEReal = x.toFiniteReal := by
   cases h; simp [ENNReal.toEReal]
 
 @[simp]
 lemma toEReal_ofValidReal (x : ℝ) (h : fmt.IsValidFloat x) (zs : SimpleSign) :
     (ofValidReal x h zs).toEReal = x := by
-  simp [toEReal_eq_toReal_of_isFinite]
+  simp [toEReal_eq_toFiniteReal_of_isFinite]
 
 lemma ofValidReal_def (x : ℝ) (h : fmt.IsValidFloat x) (zs : SimpleSign) :
     ofValidReal x h zs = ofValidNNReal (.ofValue x zs) x.nnabs (by simpa using h.abs) := (rfl)
@@ -204,10 +209,6 @@ lemma toUnbounded_ofValidReal {x : Real} {zs : SimpleSign} (h : fmt.IsValidFloat
 @[simp, norm_cast]
 lemma toUnbounded_ofValidEReal {x : EReal} {zs : SimpleSign} (h : fmt.IsValidFloat x.toReal) :
     (ofValidEReal x h zs).toUnbounded = .ofValidEReal x h.1 zs := by
-  cases x <;> simp
-
-@[simp, norm_cast]
-lemma toReal_toUnbounded {x : RealFloat fmt} : x.toUnbounded.toReal = x.toReal := by
   cases x <;> simp
 
 @[simp, norm_cast]
@@ -274,11 +275,6 @@ lemma ofUnboundedInRange_ofValidReal {x : Real} {zs : SimpleSign} (h : fmt.IsRou
 lemma ofUnboundedInRange_ofValidEReal {x : EReal} {zs : SimpleSign} (h : fmt.IsRounded x.toReal) (h') :
     ofUnboundedInRange (.ofValidEReal x h zs) h' = .ofValidEReal x ⟨h, by simpa using h'⟩ zs := by
   simp [← toUnbounded_inj]
-
-@[simp]
-lemma toReal_ofUnboundedInRange {x : UnboundedFloat fmt} (h : fmt.InRange x.toFiniteReal) :
-    (ofUnboundedInRange x h).toReal = x.toReal := by
-  cases x <;> simp
 
 @[simp]
 lemma toFiniteReal_ofUnboundedInRange {x : UnboundedFloat fmt} (h : fmt.InRange x.toFiniteReal) :
@@ -422,10 +418,58 @@ instance : InvolutiveNeg (RealFloat fmt) where
 
 @[simp]
 lemma toReal_neg (x : RealFloat fmt) : (-x).toReal = -x.toReal := by
-  simp [← toReal_toUnbounded]
+  cases x <;> simp
+
+@[simp]
+lemma toFiniteReal_neg (x : RealFloat fmt) : (-x).toFiniteReal = -x.toFiniteReal := by
+  simp [← toFiniteReal_toUnbounded]
 
 @[simp]
 lemma toEReal_neg (x : RealFloat fmt) : (-x).toEReal = -x.toEReal := by
+  simp [← toEReal_toUnbounded]
+
+protected def abs : RealFloat fmt → RealFloat fmt
+  | .ofValidNNReal _ x h => .ofValidNNReal 1 x h
+  | .infinity _ => .infinity 1
+  | .nan => .nan
+
+@[simp] lemma abs_ofValidNNReal {s x h} : (ofValidNNReal s x h : RealFloat fmt).abs = ofValidNNReal 1 x h := rfl
+@[simp] lemma abs_infinity {s} : (infinity s : RealFloat fmt).abs = infinity 1 := rfl
+@[simp] lemma abs_nan : (nan : RealFloat fmt).abs = nan := rfl
+
+@[simp, norm_cast]
+lemma toUnbounded_abs (x : RealFloat fmt) : x.abs.toUnbounded = x.toUnbounded.abs := by
+  cases x <;> simp
+
+@[simp]
+lemma abs_ofUnboundedInRange {x : UnboundedFloat fmt} (h : fmt.InRange x.toFiniteReal) :
+    (ofUnboundedInRange x h).abs = ofUnboundedInRange x.abs (by simpa using h) := by
+  cases x <;> simp
+
+@[simp] protected lemma abs_abs {x : RealFloat fmt} : x.abs.abs = x.abs := by cases x <;> simp
+@[simp] protected lemma abs_neg {x : RealFloat fmt} : (-x).abs = x.abs := by cases x <;> simp
+
+@[simp] lemma abs_eq_nan_iff {x : RealFloat fmt} : x.abs = nan ↔ x = nan := by cases x <;> simp
+@[simp] lemma isFinite_abs_iff {x : RealFloat fmt} : IsFinite x.abs ↔ IsFinite x := by cases x <;> simp
+
+@[simp] lemma abs_ofValidReal {x h zs} :
+    (ofValidReal x h zs : RealFloat fmt).abs = ofValidReal |x| h.abs 1 := by
+  simp [← toUnbounded_inj]
+
+@[simp] lemma abs_ofValidEReal {x h zs} :
+    (ofValidEReal x h zs : RealFloat fmt).abs = ofValidEReal x.abs (by simpa using h.abs) 1 := by
+  simp [← toUnbounded_inj]
+
+@[simp]
+lemma toReal_abs (x : RealFloat fmt) : x.abs.toReal = |x.toReal| := by
+  cases x <;> simp
+
+@[simp]
+lemma toFiniteReal_abs (x : RealFloat fmt) : x.abs.toFiniteReal = |x.toFiniteReal| := by
+  simp [← toFiniteReal_toUnbounded]
+
+@[simp]
+lemma toEReal_abs (x : RealFloat fmt) : x.abs.toEReal = x.toEReal.abs := by
   simp [← toEReal_toUnbounded]
 
 def sign (x : RealFloat fmt) : SignType :=

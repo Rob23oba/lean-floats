@@ -73,6 +73,16 @@ lemma neg_overflowValue {s round} :
   simp [overflowValue, apply_ite (-· : RealFloat fmt → _)]
 
 @[simp]
+lemma abs_maxFinite {s} : (maxFinite s : RealFloat fmt).abs = maxFinite 1 := by
+  simp [maxFinite]
+
+@[simp]
+lemma abs_overflowValue {s} {round : RoundingFunction} [round.NegStable] :
+    (overflowValue s round : RealFloat fmt).abs = overflowValue 1 round := by
+  simp [overflowValue, apply_ite RealFloat.abs,
+    RoundingFunction.repelsAtInfinity_iff_repelsAtInfinity_one]
+
+@[simp]
 lemma ofUnbounded_nan : ofUnbounded (.nan : UnboundedFloat fmt) round = nan := by
   simp [ofUnbounded]
 
@@ -128,6 +138,10 @@ lemma ofUnbounded_neg {x : UnboundedFloat fmt} : ofUnbounded (-x) round = -ofUnb
 lemma neg_ofUnbounded {x : UnboundedFloat fmt} : -ofUnbounded x round = ofUnbounded (-x) round.opposite := by
   simp [ofUnbounded_neg]
 
+lemma ofUnbounded_abs {x : UnboundedFloat fmt} [round.NegStable] :
+    ofUnbounded x.abs round = (ofUnbounded x round).abs := by
+  cases x <;> simp [ofUnbounded, SimpleSign.ofValue_of_nonneg, apply_dite RealFloat.abs]
+
 @[simp]
 lemma sign_ofUnbounded {x : UnboundedFloat fmt} {round} :
     (ofUnbounded x round).sign = x.sign := by
@@ -181,6 +195,16 @@ lemma neg_roundReal {x zs round} :
 @[simp]
 lemma neg_roundNNReal {s x round} :
     -(roundNNReal s x round : RealFloat fmt) = roundNNReal (-s) x round.opposite := by
+  simp [roundNNReal_eq_roundReal]
+
+@[simp]
+lemma abs_roundReal {x zs} {round : RoundingFunction} [round.NegStable] :
+    (roundReal x zs round : RealFloat fmt).abs = roundReal |x| 1 round := by
+  simp [← ofUnbounded_roundReal, ← ofUnbounded_abs]
+
+@[simp]
+lemma abs_roundNNReal {s x} {round : RoundingFunction} [round.NegStable] :
+    (roundNNReal s x round : RealFloat fmt).abs = roundNNReal 1 x round := by
   simp [roundNNReal_eq_roundReal]
 
 @[simp]
@@ -254,6 +278,8 @@ lemma ofValidNNReal_eq_neg_zero_iff {s x h} :
 
 @[simp] lemma isFinite_zero : (0 : RealFloat fmt).IsFinite := by simp [zero_eq_ofValidNNReal]
 @[simp] lemma isFinite_one : (1 : RealFloat fmt).IsFinite := by simp [one_eq_ofValidNNReal]
+
+@[simp] lemma abs_ofNat {n} : (ofNat(n) : RealFloat fmt).abs = ofNat(n) := by simp [ofNat_eq_roundReal_tiesToEven]
 
 @[simp] lemma toFiniteReal_zero : (0 : RealFloat fmt).toFiniteReal = 0 := by simp [zero_eq_ofValidNNReal]
 @[simp] lemma toFiniteReal_one : (1 : RealFloat fmt).toFiniteReal = 1 := by simp [one_eq_ofValidNNReal]

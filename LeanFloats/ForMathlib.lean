@@ -1,5 +1,5 @@
 module
-public import Mathlib.Data.EReal.Operations
+public import Mathlib.Data.EReal.Inv
 public import Mathlib.Data.Sign.Defs
 public import Mathlib.Data.Int.Log
 public import Mathlib.Data.Nat.Bitwise
@@ -175,8 +175,6 @@ theorem Nat.log2_div_two_pow (n m : Nat) :
     (n / 2 ^ m).log2 = n.log2 - m := by
   simp [← Nat.shiftRight_eq_div_pow]
 
-#check Nat.log_div_base_pow
-
 theorem BitVec.log2_toNat_lt {w : Nat} (x : BitVec w) (h : w ≠ 0) : x.toNat.log2 < w := by
   by_cases hx : x.toNat = 0
   · simp_all [h.pos]
@@ -258,7 +256,7 @@ theorem Nat.log_div_le (b n m : ℕ) : log b (n / m) ≤ log b n - log b m := by
   by_cases! hnm : n < m
   · simp [Nat.div_eq_of_lt hnm]
   have : n / m ≠ 0 := by simp [*]
-  simp [Nat.le_iff_lt_add_one, Nat.log_lt_iff_lt_pow hb this, div_lt_iff_lt_mul hm.pos]
+  simp only [Nat.le_iff_lt_add_one, Nat.log_lt_iff_lt_pow hb this, div_lt_iff_lt_mul hm.pos]
   grw [lt_pow_succ_log_self hb n, ← pow_log_le_self b hm]
   rw [← Nat.pow_add]
   apply Nat.pow_le_pow_right hb.pos
@@ -310,5 +308,26 @@ theorem Int.ediv_eq (a b : ℤ) : a.ediv b = a / b := by rfl
 theorem pow_toNat_eq_zpow {G : Type*} [DivInvMonoid G]
     {z : ℤ} (h : 0 ≤ z) (x : G) : x ^ z.toNat = x ^ z := by
   simp [← zpow_natCast, h]
+
+@[simp]
+theorem EReal.toReal_abs (x : EReal) : x.abs.toReal = |x.toReal| := by
+  cases x <;> simp [EReal.abs_def]
+
+@[simp]
+theorem ENNReal.abs_toEReal (x : ENNReal) : (x.toEReal : EReal).abs = x := by
+  cases x <;> simp [EReal.coe_nnreal_eq_coe_real, EReal.abs_def]
+
+@[simp]
+theorem EReal.abs_natCast (n : Nat) : (n : EReal).abs = n := by
+  rw [← EReal.coe_natCast, EReal.abs_def]
+  simp
+
+@[simp]
+theorem EReal.abs_one : (1 : EReal).abs = 1 := by
+  rw [← Nat.cast_one, EReal.abs_natCast, Nat.cast_one]
+
+@[simp]
+theorem EReal.abs_ofNat {n : Nat} [n.AtLeastTwo] : (ofNat(n) : EReal).abs = ofNat(n) := by
+  rw [← Nat.cast_ofNat, EReal.abs_natCast, Nat.cast_ofNat]
 
 attribute [simp] zpow_ne_zero zpow_pos zpow_nonneg

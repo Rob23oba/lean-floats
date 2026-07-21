@@ -198,6 +198,16 @@ lemma IsValid.neg {fmt : Format} {x : UnpackedFloat} (h : IsValid fmt x) :
   cases x <;> cases h <;> simp [UnpackedFloat.neg]; constructor <;> assumption
 
 @[simp]
+lemma IsRounded.abs {fmt : Format} {x : UnpackedFloat} (h : IsRounded fmt x) :
+    IsRounded fmt x.abs := by
+  cases x <;> cases h <;> simp [UnpackedFloat.abs]; constructor; assumption
+
+@[simp]
+lemma IsValid.abs {fmt : Format} {x : UnpackedFloat} (h : IsValid fmt x) :
+    IsValid fmt x.abs := by
+  cases x <;> cases h <;> simp [UnpackedFloat.abs]; constructor <;> assumption
+
+@[simp]
 lemma isValid_unpack {spec : Format} {x : BitVec spec.numBits} [GoodFormat spec] :
     IsValid spec (UnpackedFloat.unpack spec x) := by
   have : 2 ^ spec.exponentBits = 2 ^ (spec.exponentBits - 1) * 2 := by
