@@ -109,6 +109,10 @@ lemma ofUnbounded_ofValidEReal {x : EReal} (h : fmt.IsRounded x.toReal) {zs : Si
       else overflowValue (.ofValue x zs) round := by
   simp [ofUnbounded]
 
+lemma ofUnbounded_eq_ofUnboundedInRange {x : UnboundedFloat fmt}
+    (h : fmt.InRange x.toFiniteReal) : ofUnbounded x = ofUnboundedInRange x h := by
+  simp [ofUnbounded, h]
+
 @[simp, norm_cast]
 lemma ofUnbounded_toUnbounded (x : RealFloat fmt) : ofUnbounded x.toUnbounded round = x := by
   simp [ofUnbounded]

@@ -112,6 +112,18 @@ lemma toUnboundedFloat_finite_of_isRounded {s m e hm}
       .ofValidNNReal (ofSign s) (m * 2 ^ e) (isRounded_of_isRounded_finite h) := by
   rw [toUnboundedFloat, UnboundedFloat.roundNNReal_eq_ofValidNNReal (isRounded_of_isRounded_finite h)]
 
+lemma getExponent_of_isRounded_finite {s m e hm}
+    (h : IsRounded fmt.toFormat (.finite s m e hm)) :
+    fmt.toFloatFormat.getExponent (m * 2 ^ e) = e := by
+  rw [← add_zero (m : ℝ), getExponent_eq_targetExponent (by simp [hm.ne']) le_rfl one_pos]
+  rcases h with _ | _ | _ | ⟨-, hmant⟩
+  rw [← hmant]
+
+lemma getMantissa_of_isRounded_finite {s m e hm}
+    (h : IsRounded fmt.toFormat (.finite s m e hm)) :
+    fmt.toFloatFormat.getMantissa (m * 2 ^ e) = m := by
+  simpa using fmt.toFloatFormat.getMantissa_mul_base_pow (getExponent_of_isRounded_finite h)
+
 @[simp]
 lemma ofUnboundedFloat_toUnboundedFloat {fmt common} [HasCommonOfFloatFormat fmt common]
     {x : UnpackedFloat} (h : IsRounded common.toFormat x) :

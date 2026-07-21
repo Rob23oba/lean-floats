@@ -261,6 +261,65 @@ lemma isRounded_sqrt {fmt common} [HasCommonOfFormat fmt common]
   have ⟨h₁, _⟩ := sqrtCore_spec hm h
   exact isRounded_roundWithAccuracy h₁
 
+lemma compare_eq_compare_toUnboundedFloat {fmt common}
+    [HasCommonOfFormat fmt common] {x y : UnpackedFloat} (hx : IsRounded fmt x) (hy : IsRounded fmt y) :
+    x.compare y = (toUnboundedFloat x).compare (toUnboundedFloat y : UnboundedFloat common.toFloatFormat) := by
+  cases HasCommonOfFormat.elim fmt
+  fun_cases UnpackedFloat.compare
+  · simp
+  · simp
+  · clear hx; clear hy; simp; decide +revert
+  · cases y <;> simp_all [toUnboundedFloat_finite_of_isRounded]
+  · cases y <;> simp_all [toUnboundedFloat_finite_of_isRounded]
+  · cases x <;> simp_all [toUnboundedFloat_finite_of_isRounded]
+  · cases x <;> simp_all [toUnboundedFloat_finite_of_isRounded]
+  · simp [eq_comm (a := some Ordering.gt), toUnboundedFloat_finite_of_isRounded,
+      Std.compare_eq_gt, *]
+  · simp [eq_comm (a := some Ordering.lt), toUnboundedFloat_finite_of_isRounded,
+      Std.compare_eq_lt, *]
+  · simp [eq_comm (a := some Ordering.lt), toUnboundedFloat_finite_of_isRounded,
+      Std.compare_eq_lt, *]
+  · simp [eq_comm (a := some Ordering.gt), toUnboundedFloat_finite_of_isRounded,
+      Std.compare_eq_gt, *]
+  · simp
+  · simp only [hx, toUnboundedFloat_finite_of_isRounded, ofSign_negative, hy,
+      UnboundedFloat.compare_ofValidNNReal_ofValidNNReal, SimpleSign.coe_neg_one,
+      neg_mul, one_mul, Option.some.injEq, compare_neg, Ordering.swap_then,
+      ← Std.OrientedOrd.eq_swap]
+    rw [(isRounded_of_isRounded_finite hy).compare_eq_of_nonneg
+      (isRounded_of_isRounded_finite hx) (by positivity) (by positivity)]
+    simp [getMantissa_of_isRounded_finite hx, getMantissa_of_isRounded_finite hy,
+      getExponent_of_isRounded_finite hx, getExponent_of_isRounded_finite hy]
+  · simp [eq_comm (a := some Ordering.lt), toUnboundedFloat_finite_of_isRounded,
+      Std.compare_eq_lt, lt_trans (b := (0 : ℝ)), *]
+  · simp [eq_comm (a := some Ordering.gt), toUnboundedFloat_finite_of_isRounded,
+      Std.compare_eq_gt, lt_trans (b := (0 : ℝ)), *]
+  · simp only [hx, toUnboundedFloat_finite_of_isRounded, ofSign_positive, hy,
+      UnboundedFloat.compare_ofValidNNReal_ofValidNNReal, SimpleSign.coe_one, one_mul,
+      Option.some.injEq]
+    rw [(isRounded_of_isRounded_finite hx).compare_eq_of_nonneg
+      (isRounded_of_isRounded_finite hy) (by positivity) (by positivity)]
+    simp [getMantissa_of_isRounded_finite hx, getMantissa_of_isRounded_finite hy,
+      getExponent_of_isRounded_finite hx, getExponent_of_isRounded_finite hy]
+
+lemma le_eq_toUnboundedFloat_le {fmt common} [HasCommonOfFormat fmt common]
+    {x y : UnpackedFloat} (hx : IsRounded fmt x) (hy : IsRounded fmt y) :
+    x.le y = decide (toUnboundedFloat x ≤ (toUnboundedFloat y : UnboundedFloat common.toFloatFormat)) := by
+  rw [Bool.eq_iff_iff, decide_eq_true_eq, UnpackedFloat.le,
+    compare_eq_compare_toUnboundedFloat hx hy, ← UnboundedFloat.any_isLE_compare_iff]
+
+lemma lt_eq_toUnboundedFloat_lt {fmt common} [HasCommonOfFormat fmt common]
+    {x y : UnpackedFloat} (hx : IsRounded fmt x) (hy : IsRounded fmt y) :
+    x.lt y = decide (toUnboundedFloat x < (toUnboundedFloat y : UnboundedFloat common.toFloatFormat)) := by
+  rw [Bool.eq_iff_iff, decide_eq_true_eq, UnpackedFloat.lt, beq_iff_eq,
+    compare_eq_compare_toUnboundedFloat hx hy, ← UnboundedFloat.compare_eq_some_lt_iff]
+
+lemma beq_eq_toUnboundedFloat_equiv {fmt common} [HasCommonOfFormat fmt common]
+    {x y : UnpackedFloat} (hx : IsRounded fmt x) (hy : IsRounded fmt y) :
+    x.beq y = decide (toUnboundedFloat x ≈ (toUnboundedFloat y : UnboundedFloat common.toFloatFormat)) := by
+  rw [Bool.eq_iff_iff, decide_eq_true_eq, UnpackedFloat.beq, beq_iff_eq,
+    compare_eq_compare_toUnboundedFloat hx hy, ← UnboundedFloat.compare_eq_some_eq_iff]
+
 end UnpackedFloat
 
 lemma UnpackedFloat.CommonFormat.toFloatFormat_binary64 :
@@ -469,5 +528,53 @@ lemma RealFloat.toFloat_sqrt (a : RealFloat .binary64) :
 @[simp]
 lemma RealFloat.toFloat32_sqrt (a : RealFloat .binary32) :
     a.sqrt.toFloat32 = a.toFloat32.sqrt := by simp [← ofFloat32_inj]
+
+lemma RealFloat.ofFloat_le {a b : Float} : ofFloat a ≤ ofFloat b ↔ a ≤ b := by
+  change ofFloat a ≤ ofFloat b ↔ decide (a.toModel.le b.toModel) = true
+  simp [Float.Model.le, ofFloat, ofUnbounded_eq_ofUnboundedInRange,
+    Float.Model.unpack, UnpackedFloat.le_eq_toUnboundedFloat_le (fmt := .binary64)]
+
+lemma RealFloat.ofFloat32_le {a b : Float32} : ofFloat32 a ≤ ofFloat32 b ↔ a ≤ b := by
+  change ofFloat32 a ≤ ofFloat32 b ↔ decide (a.toModel.le b.toModel) = true
+  simp [Float32.Model.le, ofFloat32, ofUnbounded_eq_ofUnboundedInRange,
+    Float32.Model.unpack, UnpackedFloat.le_eq_toUnboundedFloat_le (fmt := .binary32)]
+
+lemma RealFloat.toFloat_le {a b : RealFloat .binary64} : a.toFloat ≤ b.toFloat ↔ a ≤ b := by
+  simp [← ofFloat_le]
+
+lemma RealFloat.toFloat32_le {a b : RealFloat .binary32} : a.toFloat32 ≤ b.toFloat32 ↔ a ≤ b := by
+  simp [← ofFloat32_le]
+
+lemma RealFloat.ofFloat_lt {a b : Float} : ofFloat a < ofFloat b ↔ a < b := by
+  change ofFloat a < ofFloat b ↔ decide (a.toModel.lt b.toModel) = true
+  simp [Float.Model.lt, ofFloat, ofUnbounded_eq_ofUnboundedInRange,
+    Float.Model.unpack, UnpackedFloat.lt_eq_toUnboundedFloat_lt (fmt := .binary64)]
+
+lemma RealFloat.ofFloat32_lt {a b : Float32} : ofFloat32 a < ofFloat32 b ↔ a < b := by
+  change ofFloat32 a < ofFloat32 b ↔ decide (a.toModel.lt b.toModel) = true
+  simp [Float32.Model.lt, ofFloat32, ofUnbounded_eq_ofUnboundedInRange,
+    Float32.Model.unpack, UnpackedFloat.lt_eq_toUnboundedFloat_lt (fmt := .binary32)]
+
+lemma RealFloat.toFloat_lt {a b : RealFloat .binary64} : a.toFloat < b.toFloat ↔ a < b := by
+  simp [← ofFloat_lt]
+
+lemma RealFloat.toFloat32_lt {a b : RealFloat .binary32} : a.toFloat32 < b.toFloat32 ↔ a < b := by
+  simp [← ofFloat32_lt]
+
+lemma RealFloat.ofFloat_beq {a b : Float} : (ofFloat a == ofFloat b) = (a == b) := by
+  change (ofFloat a == ofFloat b) = (a.toModel.beq b.toModel)
+  simp [Float.Model.beq, ofFloat, ofUnbounded_eq_ofUnboundedInRange,
+    Float.Model.unpack, UnpackedFloat.beq_eq_toUnboundedFloat_equiv (fmt := .binary64)]
+
+lemma RealFloat.ofFloat32_beq {a b : Float32} : (ofFloat32 a == ofFloat32 b) = (a == b) := by
+  change (ofFloat32 a == ofFloat32 b) = (a.toModel.beq b.toModel)
+  simp [Float32.Model.beq, ofFloat32, ofUnbounded_eq_ofUnboundedInRange,
+    Float32.Model.unpack, UnpackedFloat.beq_eq_toUnboundedFloat_equiv (fmt := .binary32)]
+
+lemma RealFloat.toFloat_beq {a b : RealFloat .binary64} : (a.toFloat == b.toFloat) = (a == b) := by
+  simp [← ofFloat_beq]
+
+lemma RealFloat.toFloat32_beq {a b : RealFloat .binary32} : (a.toFloat32 == b.toFloat32) = (a == b) := by
+  simp [← ofFloat32_beq]
 
 end LeanFloats
