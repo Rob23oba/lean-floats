@@ -148,7 +148,7 @@ lemma isValid_iff_isRounded_and_inRange {x : UnpackedFloat} :
       constructor
       · assumption
       · have := h₂.getExponent_le
-        rw [← add_zero (m : ℝ), getExponent_eq_targetExponent hm.ne' (by simp) (by simp)] at this
+        rw [← add_zero (m : ℝ), getExponent_eq_targetExponent (by simp [hm.ne']) (by simp) (by simp)] at this
         simpa [← hmant] using this
 
 @[simp]

@@ -224,7 +224,7 @@ lemma shiftToTargetExponent_of_le {fmt mant exp emant exp'}
 
 -- TODO: cleanup / simplify / split
 lemma toUnboundedFloat_roundWithAccuracy {s : UnpackedFloat.Sign} {mant : ℕ} {exp : ℤ}
-    {acc : UnpackedFloat.Accuracy} {f : NNReal} (hmant : mant ≠ 0)
+    {acc : UnpackedFloat.Accuracy} {f : NNReal}
     (hexp : exp ≤ fmt.toFormat.targetExponent (totalExponent mant exp))
     (hf : AccuracyRepresents acc f) :
     toUnboundedFloat (UnpackedFloat.roundWithAccuracy fmt.toFormat s mant exp acc) =
@@ -256,7 +256,12 @@ lemma toUnboundedFloat_roundWithAccuracy {s : UnpackedFloat.Sign} {mant : ℕ} {
   have hmyexp : myexp = value_of% myexp := rfl
   have hmyround : myround = value_of% myround := rfl
   replace hmyexp : myexp = exp' := by
-    simpa [getExponent_eq_targetExponent hmant hf.nonneg hf.lt_one, hexp'] using hmyexp
+    simp only [hmyexp, NNReal.coe_mul, NNReal.coe_add, NNReal.coe_natCast, NNReal.coe_zpow,
+      NNReal.coe_ofNat, FloatFormat.getExponent_simpleSign_mul]
+    rw [getExponent_eq_targetExponent _ hf.nonneg hf.lt_one, hexp']
+    intro hmant
+    have : mant.log2 = 0 := by simp [hmant]
+    format_trivial
   replace hmyround : myround = ofSign s * (rounded * 2 ^ exp') := by
     rw [← Int.cast_natCast]
     simpa [hmyexp, mul_div_assoc, ← zpow_sub₀, hrounded, mul_assoc] using hmyround
@@ -285,13 +290,12 @@ lemma toUnboundedFloat_round {s : UnpackedFloat.Sign} {mant : ℕ} {exp : ℤ} (
   split
   rename_i mant' exp' h
   have h₁ := decreaseExponent_eq h
-  have hmant' : mant' ≠ 0 := by intro; simp_all [zpow_ne_zero]
   have hexp' : exp' ≤ fmt.toFormat.targetExponent (totalExponent mant' exp') := by
     unfold UnpackedFloat.decreaseExponent at h
     cases h
     simp [totalExponent, hmant]
     format_trivial
-  rw [toUnboundedFloat_roundWithAccuracy (f := 0) hmant' hexp' (.exact rfl), add_zero, decreaseExponent_eq h]
+  rw [toUnboundedFloat_roundWithAccuracy (f := 0) hexp' (.exact rfl), add_zero, decreaseExponent_eq h]
 
 @[simp]
 lemma toUnboundedFloat_normalize (mant exp : ℤ) (zs : Float.Model.UnpackedFloat.Sign) :

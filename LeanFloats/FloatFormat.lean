@@ -238,6 +238,10 @@ noncomputable def getExponent (x : ℝ) : ℤ :=
 lemma minExp_le_getExponent {x : ℝ} : f.minExp ≤ f.getExponent x := by
   grind [getExponent]
 
+lemma getExponent_eq_minExp_iff {x : ℝ} :
+    f.getExponent x = f.minExp ↔ |x| < base ^ (f.minExp + f.precision) := by
+  simp +contextual [getExponent, Int.add_one_le_iff, ← Int.lt_zpow_iff_log_lt, or_iff_not_imp_left]
+
 @[simp]
 lemma getExponent_neg {x : ℝ} : f.getExponent (-x) = f.getExponent x := by
   grind [getExponent]

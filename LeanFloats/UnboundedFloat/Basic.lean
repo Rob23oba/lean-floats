@@ -50,6 +50,11 @@ inductive IsFinite : UnboundedFloat fmt → Prop where
   | ofValidNNReal (s : SimpleSign) (x : NNReal) (h) :
     IsFinite (ofValidNNReal s x h)
 
+instance (x : UnboundedFloat fmt) : Decidable (IsFinite x) :=
+  match x with
+  | .ofValidNNReal .. => isTrue (.ofValidNNReal ..)
+  | .nan | .infinity _ => isFalse nofun
+
 attribute [simp] IsFinite.ofValidNNReal
 
 @[simp]

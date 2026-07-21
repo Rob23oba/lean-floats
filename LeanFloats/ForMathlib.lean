@@ -170,6 +170,13 @@ theorem Nat.log2_shiftRight (n m : Nat) :
   | zero => simp
   | succ k ih => simp [Nat.shiftRight_succ, ih, Nat.sub_sub]
 
+@[simp]
+theorem Nat.log2_div_two_pow (n m : Nat) :
+    (n / 2 ^ m).log2 = n.log2 - m := by
+  simp [← Nat.shiftRight_eq_div_pow]
+
+#check Nat.log_div_base_pow
+
 theorem BitVec.log2_toNat_lt {w : Nat} (x : BitVec w) (h : w ≠ 0) : x.toNat.log2 < w := by
   by_cases hx : x.toNat = 0
   · simp_all [h.pos]
@@ -211,3 +218,97 @@ theorem Nat.log2_two_pow_add {n m : ℕ} (h : m < 2 ^ n) :
   rw [Nat.log2_eq_iff (by positivity)]
   grw [h]
   simp [Nat.two_pow_succ]
+
+@[gcongr]
+theorem Nat.log2_mono {n m : ℕ} (h : n ≤ m) : Nat.log2 n ≤ Nat.log2 m := by
+  simp only [Nat.log2_eq_log_two]
+  grw [h]
+
+theorem Nat.log_add_log_le_log_mul {b n m : ℕ} (hn : n ≠ 0) (hm : m ≠ 0) :
+    log b n + log b m ≤ log b (n * m) := by
+  by_cases! hb : b ≤ 1
+  · simp [hb, Nat.log_of_left_le_one]
+  simp only [ne_eq, _root_.mul_eq_zero, hn, hm, or_self, not_false_eq_true, le_log_iff_pow_le, Nat.pow_add, hb]
+  exact Nat.mul_le_mul (pow_log_le_self b hn) (pow_log_le_self b hm)
+
+theorem Nat.log2_add_log2_le_log2_mul {n m : ℕ} (hn : n ≠ 0) (hm : m ≠ 0) :
+    log2 n + log2 m ≤ log2 (n * m) := by
+  simp [Nat.log2_eq_log_two, Nat.log_add_log_le_log_mul, *]
+
+theorem Nat.log_mul_le (b n m : ℕ) : log b (n * m) ≤ log b n + log b m + 1 := by
+  by_cases! hb : b ≤ 1
+  · simp [hb, Nat.log_of_left_le_one]
+  by_cases! hn : n = 0
+  · simp [hn]
+  by_cases! hm : m = 0
+  · simp [hm]
+  rw [Nat.le_iff_lt_add_one]
+  rw [Nat.log_lt_iff_lt_pow hb (by simp [*])]
+  grw [lt_pow_succ_log_self hb n, lt_pow_succ_log_self hb m]
+  simp [← pow_add, add_assoc, add_left_comm]
+
+theorem Nat.log2_mul_le (n m : ℕ) : (n * m).log2 ≤ n.log2 + m.log2 + 1 := by
+  simp [Nat.log2_eq_log_two, Nat.log_mul_le, *]
+
+theorem Nat.log_div_le (b n m : ℕ) : log b (n / m) ≤ log b n - log b m := by
+  by_cases! hb : b ≤ 1
+  · simp [hb, Nat.log_of_left_le_one]
+  by_cases! hm : m = 0
+  · simp [hm]
+  by_cases! hnm : n < m
+  · simp [Nat.div_eq_of_lt hnm]
+  have : n / m ≠ 0 := by simp [*]
+  simp [Nat.le_iff_lt_add_one, Nat.log_lt_iff_lt_pow hb this, div_lt_iff_lt_mul hm.pos]
+  grw [lt_pow_succ_log_self hb n, ← pow_log_le_self b hm]
+  rw [← Nat.pow_add]
+  apply Nat.pow_le_pow_right hb.pos
+  lia
+
+theorem Nat.log2_div_le (n m : ℕ) : log2 (n / m) ≤ log2 n - log2 m := by
+  simp [Nat.log2_eq_log_two, Nat.log_div_le]
+
+theorem Nat.log_sub_log_le_log_div_add_one {b n m : ℕ} (hm : m ≠ 0) :
+    log b n - log b m ≤ log b (n / m) + 1 := by
+  by_cases! hb : b ≤ 1
+  · simp [hb, Nat.log_of_left_le_one]
+  by_cases! hn : n = 0
+  · simp [hn]
+  by_cases! hnm : n < m
+  · grw [hnm]
+    simp
+  have : n / m ≠ 0 := by simp [*]
+  grw [← pow_log_le_self b hn, lt_pow_succ_log_self hb m]
+  simp [Nat.log_div_base_pow, hb]; lia
+
+theorem Nat.log2_sub_log2_le_log2_div_add_one {m : ℕ} (hm : m ≠ 0) (n : ℕ) :
+    n.log2 - m.log2 ≤ (n / m).log2 + 1 := by
+  simpa [Nat.log2_eq_log_two] using Nat.log_sub_log_le_log_div_add_one hm
+
+@[simp]
+theorem Nat.log_sqrt (b n : ℕ) : log b n.sqrt = log b n / 2 := by
+  by_cases! hb : b ≤ 1
+  · simp [hb, Nat.log_of_left_le_one]
+  by_cases hn : n = 0
+  · simp [hn]
+  rw [Nat.log_eq_iff (by simp [Nat.sqrt_eq_zero, *])]
+  constructor
+  · rw [Nat.le_sqrt, ← Nat.pow_add]
+    grw [← mul_two, Nat.div_mul_le_self, Nat.pow_log_le_self b hn]
+    exact hb.le
+  · rw [Nat.sqrt_lt, ← Nat.pow_add]
+    grw [lt_pow_succ_log_self hb n]
+    apply Nat.pow_le_pow_right hb.pos
+    lia
+
+@[simp]
+theorem Nat.log2_sqrt (n : ℕ) : n.sqrt.log2 = n.log2 / 2 := by
+  simp [Nat.log2_eq_log_two, Nat.log_sqrt]
+
+@[simp]
+theorem Int.ediv_eq (a b : ℤ) : a.ediv b = a / b := by rfl
+
+theorem pow_toNat_eq_zpow {G : Type*} [DivInvMonoid G]
+    {z : ℤ} (h : 0 ≤ z) (x : G) : x ^ z.toNat = x ^ z := by
+  simp [← zpow_natCast, h]
+
+attribute [simp] zpow_ne_zero zpow_pos zpow_nonneg

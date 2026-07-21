@@ -172,13 +172,23 @@ lemma signApply_eq_ofSign_mul (s : UnpackedFloat.Sign) (z : ℤ) :
   cases s <;> simp [UnpackedFloat.Sign.apply]
 
 lemma getExponent_eq_targetExponent {fmt : CommonFormat} {mant : ℕ} {f : ℝ} {exp : ℤ}
-    (hmant : mant ≠ 0) (hf₁ : 0 ≤ f) (hf₂ : f < 1) :
+    (hmant : mant = 0 → exp ≤ fmt.toFormat.minExponent) (hf₁ : 0 ≤ f) (hf₂ : f < 1) :
     fmt.toFloatFormat.getExponent ((mant + f) * 2 ^ exp) =
       fmt.toFormat.targetExponent (totalExponent mant exp) := by
-  simp [totalExponent, Format.targetExponent, FloatFormat.getExponent,
-    zpow_ne_zero, show 0 < mant + f by positivity, ne_of_gt, abs_of_pos,
-    Int.log_natCast_add_eq_natLog hmant.pos hf₁ hf₂, ← Nat.log2_eq_log_two,
-    Format.mantissaBits, Format.minExponent, FloatFormat.minExp, ← sub_sub,
-    add_right_comm, sub_right_comm _ _ (1 : ℤ)]
+  by_cases! hmant' : mant ≠ 0
+  · simp [totalExponent, Format.targetExponent, FloatFormat.getExponent,
+      show 0 < mant + f by positivity, ne_of_gt, abs_of_pos,
+      Int.log_natCast_add_eq_natLog hmant'.pos hf₁ hf₂, ← Nat.log2_eq_log_two,
+      Format.mantissaBits, Format.minExponent, FloatFormat.minExp, ← sub_sub,
+      add_right_comm, sub_right_comm _ _ (1 : ℤ)]
+  · subst hmant'
+    simp only [CommonFormat.minExponent_toFormat, forall_const] at hmant
+    have htarget : fmt.toFormat.targetExponent (totalExponent 0 exp) = fmt.toFormat.minExponent := by
+      format_trivial
+    suffices |f| < 2 ^ (fmt.toFloatFormat.minExp + (↑fmt.mbits + 1) - exp) by
+      simpa [FloatFormat.getExponent_eq_minExp_iff, htarget, ← lt_div_iff₀, ← zpow_sub₀]
+    grw [abs_of_nonneg hf₁, hf₂]
+    apply one_le_zpow₀ one_le_two
+    format_trivial
 
 end LeanFloats.UnpackedFloat
