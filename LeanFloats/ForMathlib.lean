@@ -379,12 +379,28 @@ lemma compare_mul_right_of_pos {α : Type*} [LinearOrder α] [Semiring α] [IsSt
     {a b c : α} (h : 0 < c) : compare (a * c) (b * c) = compare a b :=
   compare_eq_compare_of_le (mul_le_mul_iff_of_pos_right h) (mul_le_mul_iff_of_pos_right h)
 
-@[simp]
+@[simp, norm_cast]
 lemma compare_natCast {α : Type*} [LinearOrder α] [Semiring α] [IsStrictOrderedRing α] {a b : ℕ} :
     compare (a : α) (b : α) = compare a b :=
   compare_eq_compare_of_le Nat.cast_le Nat.cast_le
 
-@[simp]
+@[simp, norm_cast]
 lemma compare_intCast {α : Type*} [LinearOrder α] [Ring α] [IsStrictOrderedRing α] {a b : ℤ} :
     compare (a : α) (b : α) = compare a b :=
   compare_eq_compare_of_le Int.cast_le Int.cast_le
+
+@[simp, norm_cast]
+lemma compare_realToEReal {a b : ℝ} : compare (a : EReal) (b : EReal) = compare a b :=
+  compare_eq_compare_of_le EReal.coe_le_coe_iff EReal.coe_le_coe_iff
+
+@[simp, norm_cast]
+lemma compare_nnrealToReal {a b : NNReal} : compare (a : ℝ) (b : ℝ) = compare a b :=
+  compare_eq_compare_of_le NNReal.coe_le_coe NNReal.coe_le_coe
+
+@[simp, norm_cast]
+lemma compare_nnrealToENNReal {a b : NNReal} : compare (a : ENNReal) (b : ENNReal) = compare a b :=
+  compare_eq_compare_of_le ENNReal.coe_le_coe ENNReal.coe_le_coe
+
+@[simp]
+lemma compare_erealNeg {a b : EReal} : compare (-a) (-b) = compare b a :=
+  compare_eq_compare_of_le EReal.neg_le_neg_iff EReal.neg_le_neg_iff

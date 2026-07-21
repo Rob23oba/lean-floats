@@ -212,10 +212,15 @@ protected lemma lt_asymm {a b : UnboundedFloat fmt} : a < b → ¬ b < a := by g
 protected lemma not_lt_of_ge {a b : UnboundedFloat fmt} : a ≤ b → ¬ b < a := by grind
 protected lemma not_le_of_gt {a b : UnboundedFloat fmt} : a < b → ¬ b ≤ a := by grind
 protected lemma not_equiv_of_lt {a b : UnboundedFloat fmt} : a < b → ¬ a ≈ b := by grind
+protected lemma not_equiv_of_gt {a b : UnboundedFloat fmt} : b < a → ¬ a ≈ b := by grind
+protected lemma ne_of_lt {a b : UnboundedFloat fmt} : a < b → a ≠ b := by grind
+protected lemma ne_of_gt {a b : UnboundedFloat fmt} : b < a → a ≠ b := by grind
 protected lemma le_of_lt {a b : UnboundedFloat fmt} : a < b → a ≤ b := by grind
 protected lemma lt_of_lt_of_equiv {a b c : UnboundedFloat fmt} : a < b → b ≈ c → a < c := by grind
 protected lemma lt_of_equiv_of_lt {a b c : UnboundedFloat fmt} : a ≈ b → b < c → a < c := by grind
 protected lemma le_iff_lt_or_equiv {a b : UnboundedFloat fmt} : a ≤ b ↔ a < b ∨ a ≈ b := by grind
+
+@[gcongr] lemma toEReal_mono {a b : UnboundedFloat fmt} : a ≤ b → a.toEReal ≤ b.toEReal := by grind
 
 @[trans] lemma equiv_trans {a b c : UnboundedFloat fmt} (h : a ≈ b) (h' : b ≈ c) : a ≈ c := by grind
 @[symm] lemma equiv_symm {a b : UnboundedFloat fmt} (h : a ≈ b) : b ≈ a := by grind
@@ -241,6 +246,7 @@ instance : @Std.Symm (UnboundedFloat fmt) (· ≈ ·) := ⟨fun _ _ => Unbounded
 @[gcongr] lemma equiv_imp_equiv_right {a b c : UnboundedFloat fmt} (hac : b ≈ c) : a ≈ b → a ≈ c := by grind
 
 @[simp] lemma equiv_self_iff_ne_nan {a : UnboundedFloat fmt} : a ≈ a ↔ a ≠ nan := by grind
+@[simp] lemma le_self_iff_ne_nan {a : UnboundedFloat fmt} : a ≤ a ↔ a ≠ nan := by grind
 
 @[simp] lemma map_swap_compare {a b : UnboundedFloat fmt} : (a.compare b).map (·.swap) = b.compare a := by grind
 @[simp] lemma any_isLE_compare_iff {a b : UnboundedFloat fmt} : (a.compare b).any (·.isLE) ↔ a ≤ b := by grind
@@ -256,9 +262,130 @@ instance : @Std.Symm (UnboundedFloat fmt) (· ≈ ·) := ⟨fun _ _ => Unbounded
 @[simp] lemma not_lt_nan {a : UnboundedFloat fmt} : ¬a < nan := by grind
 @[simp] lemma not_nan_equiv {a : UnboundedFloat fmt} : ¬nan ≈ a := by grind
 @[simp] lemma not_equiv_nan {a : UnboundedFloat fmt} : ¬a ≈ nan := by grind
-
 @[simp] lemma compare_nan_left {a : UnboundedFloat fmt} : nan.compare a = none := by simp
 @[simp] lemma compare_nan_right {a : UnboundedFloat fmt} : a.compare nan = none := by simp
+
+@[simp] lemma infinity_le_infinity_iff {s s' : SimpleSign} :
+    (infinity s : UnboundedFloat fmt) ≤ infinity s' ↔ s ≤ s' := by
+  cases s <;> cases s' <;> simp [UnboundedFloat.le_def]
+
+@[simp] lemma ofValidNNReal_le_infinity_iff {s x h s'} :
+    (ofValidNNReal s x h : UnboundedFloat fmt) ≤ infinity s' ↔ s' = 1 := by
+  cases s <;> cases s' <;> simp [UnboundedFloat.le_def]
+
+@[simp] lemma infinity_le_ofValidNNReal_iff {s x h s'} :
+    infinity s' ≤ (ofValidNNReal s x h : UnboundedFloat fmt) ↔ s' = -1 := by
+  cases s <;> cases s' <;> simp [UnboundedFloat.le_def]
+
+@[simp] lemma ofValidNNReal_le_ofValidNNReal {s x h s' x' h'} :
+    ofValidNNReal s x h ≤ (ofValidNNReal s' x' h' : UnboundedFloat fmt) ↔ (s * x : ℝ) ≤ s' * x' := by
+  simp [UnboundedFloat.le_def, EReal.coe_nnreal_eq_coe_real]; norm_cast
+
+@[simp] lemma ofValidReal_le_ofValidReal {x h zs x' h' zs'} :
+    ofValidReal x h zs ≤ (ofValidReal x' h' zs' : UnboundedFloat fmt) ↔ x ≤ x' := by
+  simp [ofValidReal]
+
+@[simp] lemma ofValidEReal_le_ofValidEReal {x h zs x' h' zs'} :
+    ofValidEReal x h zs ≤ (ofValidEReal x' h' zs' : UnboundedFloat fmt) ↔ x ≤ x' := by
+  simp [UnboundedFloat.le_def]
+
+@[simp] lemma infinity_lt_infinity_iff {s s' : SimpleSign} :
+    (infinity s : UnboundedFloat fmt) < infinity s' ↔ s < s' := by
+  cases s <;> cases s' <;> simp [UnboundedFloat.lt_def]
+
+@[simp] lemma ofValidNNReal_lt_infinity_iff {s x h s'} :
+    (ofValidNNReal s x h : UnboundedFloat fmt) < infinity s' ↔ s' = 1 := by
+  cases s <;> cases s' <;> simp [UnboundedFloat.lt_def, EReal.coe_nnreal_eq_coe_real, ← EReal.coe_neg]
+
+@[simp] lemma infinity_lt_ofValidNNReal_iff {s x h s'} :
+    infinity s' < (ofValidNNReal s x h : UnboundedFloat fmt) ↔ s' = -1 := by
+  cases s <;> cases s' <;> simp [UnboundedFloat.lt_def, EReal.coe_nnreal_eq_coe_real, ← EReal.coe_neg]
+
+@[simp] lemma ofValidNNReal_lt_ofValidNNReal {s x h s' x' h'} :
+    ofValidNNReal s x h < (ofValidNNReal s' x' h' : UnboundedFloat fmt) ↔ (s * x : ℝ) < s' * x' := by
+  simp [UnboundedFloat.lt_def, EReal.coe_nnreal_eq_coe_real]; norm_cast
+
+@[simp] lemma ofValidReal_lt_ofValidReal {x h zs x' h' zs'} :
+    ofValidReal x h zs < (ofValidReal x' h' zs' : UnboundedFloat fmt) ↔ x < x' := by
+  simp [ofValidReal]
+
+@[simp] lemma ofValidEReal_lt_ofValidEReal {x h zs x' h' zs'} :
+    ofValidEReal x h zs < (ofValidEReal x' h' zs' : UnboundedFloat fmt) ↔ x < x' := by
+  simp [UnboundedFloat.lt_def]
+
+@[simp] lemma compare_infinity_infinity {s s' : SimpleSign} :
+    (infinity s : UnboundedFloat fmt).compare (infinity s') = some (compare s s') := by
+  cases s <;> cases s' <;> simp [UnboundedFloat.compare_def, Std.compare_eq_lt.mpr, Std.compare_eq_gt.mpr]
+
+@[simp] lemma compare_ofValidNNReal_infinity_one {s x h} :
+    (ofValidNNReal s x h : UnboundedFloat fmt).compare (infinity 1) = some .lt := by simp
+
+@[simp] lemma compare_ofValidNNReal_infinity_neg_one {s x h} :
+    (ofValidNNReal s x h : UnboundedFloat fmt).compare (infinity (-1)) = some .gt := by simp
+
+@[simp] lemma compare_infinity_one_ofValidNNReal {s x h} :
+    (infinity 1).compare (ofValidNNReal s x h : UnboundedFloat fmt) = some .gt := by simp
+
+@[simp] lemma compare_infinity_neg_one_ofValidNNReal {s x h} :
+    (infinity (-1)).compare (ofValidNNReal s x h : UnboundedFloat fmt) = some .lt := by simp
+
+@[simp] lemma compare_ofValidNNReal_ofValidNNReal {s x h s' x' h'} :
+    (ofValidNNReal s x h).compare (ofValidNNReal s' x' h' : UnboundedFloat fmt) = some (compare (s * x : ℝ) (s' * x')) := by
+  simp [UnboundedFloat.compare_def, EReal.coe_nnreal_eq_coe_real]; norm_cast
+
+@[simp] lemma compare_ofValidReal_ofValidReal {x h zs x' h' zs'} :
+    (ofValidReal x h zs).compare (ofValidReal x' h' zs' : UnboundedFloat fmt) = some (compare x x') := by
+  simp [ofValidReal]
+
+@[simp] lemma compare_ofValidEReal_ofValidEReal {x h zs x' h' zs'} :
+    (ofValidEReal x h zs).compare (ofValidEReal x' h' zs' : UnboundedFloat fmt) = some (compare x x') := by
+  simp [UnboundedFloat.compare_def]
+
+lemma IsFinite.le_infinity_iff {x : UnboundedFloat fmt} {s'} (h : x.IsFinite) :
+    x ≤ infinity s' ↔ s' = 1 := by cases h; simp
+
+lemma IsFinite.infinity_le_iff {x : UnboundedFloat fmt} {s'} (h : x.IsFinite) :
+    infinity s' ≤ x ↔ s' = -1 := by cases h; simp
+
+lemma IsFinite.lt_infinity_one {x : UnboundedFloat fmt} (h : x.IsFinite) :
+    x < infinity 1 := by cases h; simp
+
+lemma IsFinite.infinity_neg_one_lt {x : UnboundedFloat fmt} (h : x.IsFinite) :
+    infinity (-1) < x := by cases h; simp
+
+lemma isFinite_iff_infinity_neg_one_lt_and_lt_infinity_one {x : UnboundedFloat fmt} :
+    x.IsFinite ↔ infinity (-1) < x ∧ x < infinity 1 := by
+  cases x <;> simp +contextual
+
+@[simp]
+lemma le_infinity_one_iff {x : UnboundedFloat fmt} :
+    x ≤ infinity 1 ↔ x ≠ nan := by cases x <;> simp
+
+@[simp]
+lemma le_infinity_neg_one_iff {x : UnboundedFloat fmt} :
+    x ≤ infinity (-1) ↔ x = infinity (-1) := by cases x <;> simp
+
+@[simp]
+lemma infinity_one_le_iff {x : UnboundedFloat fmt} :
+    infinity 1 ≤ x ↔ x = infinity 1 := by cases x <;> simp
+
+@[simp]
+lemma infinity_neg_one_le_iff {x : UnboundedFloat fmt} :
+    infinity (-1) ≤ x ↔ x ≠ nan := by cases x <;> simp
+
+@[simp]
+lemma not_infinity_one_lt {x : UnboundedFloat fmt} :
+    ¬ infinity 1 < x := by cases x <;> simp
+
+@[simp]
+lemma not_lt_infinity_neg_one {x : UnboundedFloat fmt} :
+    ¬ x < infinity (-1) := by cases x <;> simp
+
+lemma lt_infinity_one_iff {x : UnboundedFloat fmt} :
+    x < infinity 1 ↔ x.IsFinite ∨ x = infinity (-1) := by cases x <;> simp
+
+lemma infinity_neg_one_lt_iff {x : UnboundedFloat fmt} :
+    infinity (-1) < x ↔ x.IsFinite ∨ x = infinity 1 := by cases x <;> simp
 
 protected lemma le_total {a b : UnboundedFloat fmt} (ha : a ≠ nan) (hb : b ≠ nan) : a ≤ b ∨ b ≤ a := by grind
 
@@ -298,6 +425,18 @@ lemma toFiniteReal_neg (x : UnboundedFloat fmt) : (-x).toFiniteReal = -x.toFinit
 @[simp]
 lemma toEReal_neg (x : UnboundedFloat fmt) : (-x).toEReal = -x.toEReal := by
   cases x <;> simp
+
+@[simp]
+protected lemma neg_le_neg_iff {x y : UnboundedFloat fmt} : -x ≤ -y ↔ y ≤ x := by
+  simp [UnboundedFloat.le_def, and_left_comm]
+
+@[simp]
+protected lemma neg_lt_neg_iff {x y : UnboundedFloat fmt} : -x < -y ↔ y < x := by
+  simp [UnboundedFloat.lt_def, and_left_comm]
+
+@[simp]
+protected lemma compare_neg {x y : UnboundedFloat fmt} : (-x).compare (-y) = y.compare x := by
+  simp [UnboundedFloat.compare_def, and_comm]
 
 protected def abs : UnboundedFloat fmt → UnboundedFloat fmt
   | .ofValidNNReal _ x h => .ofValidNNReal 1 x h

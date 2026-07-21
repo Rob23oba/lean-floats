@@ -133,13 +133,22 @@ instance : BoundedOrder SimpleSign where
 @[simp] lemma one_le_iff : ∀ {s : SimpleSign}, 1 ≤ s ↔ s = 1 := by decide
 @[simp] lemma le_neg_one_iff : ∀ {s : SimpleSign}, s ≤ -1 ↔ s = -1 := by decide
 
+@[simp] lemma lt_one_iff : ∀ (s : SimpleSign), s < 1 ↔ s = -1 := by decide
+@[simp] lemma neg_one_lt_iff : ∀ (s : SimpleSign), -1 < s ↔ s = 1 := by decide
+@[simp] lemma not_one_lt : ∀ {s : SimpleSign}, ¬ 1 < s := by decide
+@[simp] lemma not_lt_neg_one : ∀ {s : SimpleSign}, ¬ s < -1 := by decide
+
 @[simp] lemma bot_eq_neg_one : (⊥ : SimpleSign) = -1 := rfl
 @[simp] lemma top_eq_one : (⊤ : SimpleSign) = 1 := rfl
 
 @[simp] protected lemma le_neg_self_iff : ∀ {s : SimpleSign}, s ≤ -s ↔ s = -1 := by decide
 @[simp] protected lemma neg_le_self_iff : ∀ {s : SimpleSign}, -s ≤ s ↔ s = 1 := by decide
+@[simp] protected lemma lt_neg_self_iff : ∀ {s : SimpleSign}, s < -s ↔ s = -1 := by decide
+@[simp] protected lemma neg_lt_self_iff : ∀ {s : SimpleSign}, -s < s ↔ s = 1 := by decide
 @[simp] protected lemma neg_le_neg_iff : ∀ {s s' : SimpleSign}, -s ≤ -s' ↔ s' ≤ s := by decide
+@[simp] protected lemma neg_lt_neg_iff : ∀ {s s' : SimpleSign}, -s < -s' ↔ s' < s := by decide
 protected lemma neg_le_neg : ∀ {s s' : SimpleSign}, s ≤ s' → -s' ≤ -s := by decide
+protected lemma neg_lt_neg : ∀ {s s' : SimpleSign}, s < s' → -s' < -s := by decide
 
 protected lemma max_neg_neg : ∀ (s s' : SimpleSign), max (-s) (-s') = -min s s' := by decide
 protected lemma min_neg_neg : ∀ (s s' : SimpleSign), min (-s) (-s') = -max s s' := by decide
@@ -158,6 +167,9 @@ protected lemma min_neg_neg : ∀ (s s' : SimpleSign), min (-s) (-s') = -max s s
 @[simp] lemma neg_one_eq_max_iff : ∀ {s s' : SimpleSign}, -1 = max s s' ↔ s = -1 ∧ s' = -1 := by decide
 @[simp] lemma one_eq_min_iff : ∀ {s s' : SimpleSign}, 1 = min s s' ↔ s = 1 ∧ s' = 1 := by decide
 @[simp] lemma neg_one_eq_min_iff : ∀ {s s' : SimpleSign}, -1 = min s s' ↔ s = -1 ∨ s' = -1 := by decide
+
+@[simp] lemma compare_neg_one_one : compare (-1) 1 = .lt := by decide
+@[simp] lemma compare_one_neg_one : compare 1 (-1) = .gt := by decide
 
 variable {α : Type*}
 

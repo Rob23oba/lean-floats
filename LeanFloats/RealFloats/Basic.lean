@@ -404,9 +404,14 @@ protected lemma lt_asymm {a b : RealFloat fmt} : a < b → ¬ b < a := by grind
 protected lemma not_lt_of_ge {a b : RealFloat fmt} : a ≤ b → ¬ b < a := by grind
 protected lemma not_le_of_gt {a b : RealFloat fmt} : a < b → ¬ b ≤ a := by grind
 protected lemma not_equiv_of_lt {a b : RealFloat fmt} : a < b → ¬ a ≈ b := by grind
+protected lemma not_equiv_of_gt {a b : RealFloat fmt} : b < a → ¬ a ≈ b := by grind
+protected lemma ne_of_lt {a b : RealFloat fmt} : a < b → a ≠ b := by grind
+protected lemma ne_of_gt {a b : RealFloat fmt} : b < a → a ≠ b := by grind
 protected lemma le_of_lt {a b : RealFloat fmt} : a < b → a ≤ b := by grind
 protected lemma lt_of_lt_of_equiv {a b c : RealFloat fmt} : a < b → b ≈ c → a < c := by grind
 protected lemma lt_of_equiv_of_lt {a b c : RealFloat fmt} : a ≈ b → b < c → a < c := by grind
+
+@[gcongr] lemma toEReal_mono {a b : UnboundedFloat fmt} : a ≤ b → a.toEReal ≤ b.toEReal := by grind
 
 @[trans] lemma equiv_trans {a b c : RealFloat fmt} (h : a ≈ b) (h' : b ≈ c) : a ≈ c := by grind
 @[symm] lemma equiv_symm {a b : RealFloat fmt} (h : a ≈ b) : b ≈ a := by grind
@@ -432,6 +437,7 @@ instance : Std.Symm (α := RealFloat fmt) (· ≈ ·) := ⟨fun _ _ => RealFloat
 @[gcongr] lemma equiv_imp_equiv_right {a b c : RealFloat fmt} (hac : b ≈ c) : a ≈ b → a ≈ c := by grind
 
 @[simp] lemma equiv_self_iff_ne_nan {a : RealFloat fmt} : a ≈ a ↔ a ≠ nan := by grind
+@[simp] lemma le_self_iff_ne_nan {a : RealFloat fmt} : a ≤ a ↔ a ≠ nan := by grind
 
 @[simp] lemma map_swap_compare {a b : RealFloat fmt} : (a.compare b).map (·.swap) = b.compare a := by grind
 @[simp] lemma any_isLE_compare_iff {a b : RealFloat fmt} : (a.compare b).any (·.isLE) ↔ a ≤ b := by grind
@@ -447,9 +453,130 @@ instance : Std.Symm (α := RealFloat fmt) (· ≈ ·) := ⟨fun _ _ => RealFloat
 @[simp] lemma not_lt_nan {a : RealFloat fmt} : ¬a < nan := by grind
 @[simp] lemma not_nan_equiv {a : RealFloat fmt} : ¬nan ≈ a := by grind
 @[simp] lemma not_equiv_nan {a : RealFloat fmt} : ¬a ≈ nan := by grind
-
 @[simp] lemma compare_nan_left {a : RealFloat fmt} : nan.compare a = none := by simp
 @[simp] lemma compare_nan_right {a : RealFloat fmt} : a.compare nan = none := by simp
+
+@[simp] lemma infinity_le_infinity_iff {s s' : SimpleSign} :
+    (infinity s : RealFloat fmt) ≤ infinity s' ↔ s ≤ s' := by
+  cases s <;> cases s' <;> simp [RealFloat.le_def]
+
+@[simp] lemma ofValidNNReal_le_infinity_iff {s x h s'} :
+    (ofValidNNReal s x h : RealFloat fmt) ≤ infinity s' ↔ s' = 1 := by
+  cases s <;> cases s' <;> simp [RealFloat.le_def]
+
+@[simp] lemma infinity_le_ofValidNNReal_iff {s x h s'} :
+    infinity s' ≤ (ofValidNNReal s x h : RealFloat fmt) ↔ s' = -1 := by
+  cases s <;> cases s' <;> simp [RealFloat.le_def]
+
+@[simp] lemma ofValidNNReal_le_ofValidNNReal {s x h s' x' h'} :
+    ofValidNNReal s x h ≤ (ofValidNNReal s' x' h' : RealFloat fmt) ↔ (s * x : ℝ) ≤ s' * x' := by
+  simp [RealFloat.le_def, EReal.coe_nnreal_eq_coe_real]; norm_cast
+
+@[simp] lemma ofValidReal_le_ofValidReal {x h zs x' h' zs'} :
+    ofValidReal x h zs ≤ (ofValidReal x' h' zs' : RealFloat fmt) ↔ x ≤ x' := by
+  simp [ofValidReal]
+
+@[simp] lemma ofValidEReal_le_ofValidEReal {x h zs x' h' zs'} :
+    ofValidEReal x h zs ≤ (ofValidEReal x' h' zs' : RealFloat fmt) ↔ x ≤ x' := by
+  simp [RealFloat.le_def]
+
+@[simp] lemma infinity_lt_infinity_iff {s s' : SimpleSign} :
+    (infinity s : RealFloat fmt) < infinity s' ↔ s < s' := by
+  cases s <;> cases s' <;> simp [RealFloat.lt_def]
+
+@[simp] lemma ofValidNNReal_lt_infinity_iff {s x h s'} :
+    (ofValidNNReal s x h : RealFloat fmt) < infinity s' ↔ s' = 1 := by
+  cases s <;> cases s' <;> simp [RealFloat.lt_def, EReal.coe_nnreal_eq_coe_real, ← EReal.coe_neg]
+
+@[simp] lemma infinity_lt_ofValidNNReal_iff {s x h s'} :
+    infinity s' < (ofValidNNReal s x h : RealFloat fmt) ↔ s' = -1 := by
+  cases s <;> cases s' <;> simp [RealFloat.lt_def, EReal.coe_nnreal_eq_coe_real, ← EReal.coe_neg]
+
+@[simp] lemma ofValidNNReal_lt_ofValidNNReal {s x h s' x' h'} :
+    ofValidNNReal s x h < (ofValidNNReal s' x' h' : RealFloat fmt) ↔ (s * x : ℝ) < s' * x' := by
+  simp [RealFloat.lt_def, EReal.coe_nnreal_eq_coe_real]; norm_cast
+
+@[simp] lemma ofValidReal_lt_ofValidReal {x h zs x' h' zs'} :
+    ofValidReal x h zs < (ofValidReal x' h' zs' : RealFloat fmt) ↔ x < x' := by
+  simp [ofValidReal]
+
+@[simp] lemma ofValidEReal_lt_ofValidEReal {x h zs x' h' zs'} :
+    ofValidEReal x h zs < (ofValidEReal x' h' zs' : RealFloat fmt) ↔ x < x' := by
+  simp [RealFloat.lt_def]
+
+@[simp] lemma compare_infinity_infinity {s s' : SimpleSign} :
+    (infinity s : RealFloat fmt).compare (infinity s') = some (compare s s') := by
+  cases s <;> cases s' <;> simp [RealFloat.compare_def, Std.compare_eq_lt.mpr, Std.compare_eq_gt.mpr]
+
+@[simp] lemma compare_ofValidNNReal_infinity_one {s x h} :
+    (ofValidNNReal s x h : RealFloat fmt).compare (infinity 1) = some .lt := by simp
+
+@[simp] lemma compare_ofValidNNReal_infinity_neg_one {s x h} :
+    (ofValidNNReal s x h : RealFloat fmt).compare (infinity (-1)) = some .gt := by simp
+
+@[simp] lemma compare_infinity_one_ofValidNNReal {s x h} :
+    (infinity 1).compare (ofValidNNReal s x h : RealFloat fmt) = some .gt := by simp
+
+@[simp] lemma compare_infinity_neg_one_ofValidNNReal {s x h} :
+    (infinity (-1)).compare (ofValidNNReal s x h : RealFloat fmt) = some .lt := by simp
+
+@[simp] lemma compare_ofValidNNReal_ofValidNNReal {s x h s' x' h'} :
+    (ofValidNNReal s x h).compare (ofValidNNReal s' x' h' : RealFloat fmt) = some (compare (s * x : ℝ) (s' * x')) := by
+  simp [RealFloat.compare_def, EReal.coe_nnreal_eq_coe_real]; norm_cast
+
+@[simp] lemma compare_ofValidReal_ofValidReal {x h zs x' h' zs'} :
+    (ofValidReal x h zs).compare (ofValidReal x' h' zs' : RealFloat fmt) = some (compare x x') := by
+  simp [ofValidReal]
+
+@[simp] lemma compare_ofValidEReal_ofValidEReal {x h zs x' h' zs'} :
+    (ofValidEReal x h zs).compare (ofValidEReal x' h' zs' : RealFloat fmt) = some (compare x x') := by
+  simp [RealFloat.compare_def]
+
+lemma IsFinite.le_infinity_iff {x : RealFloat fmt} {s'} (h : x.IsFinite) :
+    x ≤ infinity s' ↔ s' = 1 := by cases h; simp
+
+lemma IsFinite.infinity_le_iff {x : RealFloat fmt} {s'} (h : x.IsFinite) :
+    infinity s' ≤ x ↔ s' = -1 := by cases h; simp
+
+lemma IsFinite.lt_infinity_one {x : RealFloat fmt} (h : x.IsFinite) :
+    x < infinity 1 := by cases h; simp
+
+lemma IsFinite.infinity_neg_one_lt {x : RealFloat fmt} (h : x.IsFinite) :
+    infinity (-1) < x := by cases h; simp
+
+lemma isFinite_iff_infinity_neg_one_lt_and_lt_infinity_one {x : RealFloat fmt} :
+    x.IsFinite ↔ infinity (-1) < x ∧ x < infinity 1 := by
+  cases x <;> simp +contextual
+
+@[simp]
+lemma le_infinity_one_iff {x : RealFloat fmt} :
+    x ≤ infinity 1 ↔ x ≠ nan := by cases x <;> simp
+
+@[simp]
+lemma le_infinity_neg_one_iff {x : RealFloat fmt} :
+    x ≤ infinity (-1) ↔ x = infinity (-1) := by cases x <;> simp
+
+@[simp]
+lemma infinity_one_le_iff {x : RealFloat fmt} :
+    infinity 1 ≤ x ↔ x = infinity 1 := by cases x <;> simp
+
+@[simp]
+lemma infinity_neg_one_le_iff {x : RealFloat fmt} :
+    infinity (-1) ≤ x ↔ x ≠ nan := by cases x <;> simp
+
+@[simp]
+lemma not_infinity_one_lt {x : RealFloat fmt} :
+    ¬ infinity 1 < x := by cases x <;> simp
+
+@[simp]
+lemma not_lt_infinity_neg_one {x : RealFloat fmt} :
+    ¬ x < infinity (-1) := by cases x <;> simp
+
+lemma lt_infinity_one_iff {x : RealFloat fmt} :
+    x < infinity 1 ↔ x.IsFinite ∨ x = infinity (-1) := by cases x <;> simp
+
+lemma infinity_neg_one_lt_iff {x : RealFloat fmt} :
+    infinity (-1) < x ↔ x.IsFinite ∨ x = infinity 1 := by cases x <;> simp
 
 protected lemma le_total {a b : RealFloat fmt} (ha : a ≠ nan) (hb : b ≠ nan) : a ≤ b ∨ b ≤ a := by grind
 
@@ -502,6 +629,18 @@ lemma toFiniteReal_neg (x : RealFloat fmt) : (-x).toFiniteReal = -x.toFiniteReal
 @[simp]
 lemma toEReal_neg (x : RealFloat fmt) : (-x).toEReal = -x.toEReal := by
   simp [← toEReal_toUnbounded]
+
+@[simp]
+protected lemma neg_le_neg_iff {x y : RealFloat fmt} : -x ≤ -y ↔ y ≤ x := by
+  simp [RealFloat.le_def, and_left_comm]
+
+@[simp]
+protected lemma neg_lt_neg_iff {x y : RealFloat fmt} : -x < -y ↔ y < x := by
+  simp [RealFloat.lt_def, and_left_comm]
+
+@[simp]
+protected lemma compare_neg {x y : RealFloat fmt} : (-x).compare (-y) = y.compare x := by
+  simp [RealFloat.compare_def, and_comm]
 
 protected def abs : RealFloat fmt → RealFloat fmt
   | .ofValidNNReal _ x h => .ofValidNNReal 1 x h
