@@ -309,14 +309,24 @@ lemma ofUnboundedInRange_eq_infinity_iff {x : UnboundedFloat fmt} {s : SimpleSig
 instance : LE (RealFloat fmt) where
   le a b := a ≠ nan ∧ b ≠ nan ∧ a.toEReal ≤ b.toEReal
 
+instance : LT (RealFloat fmt) where
+  lt a b := a ≠ nan ∧ b ≠ nan ∧ a.toEReal < b.toEReal
+
 protected def Equiv (a b : RealFloat fmt) : Prop :=
   a ≠ nan ∧ b ≠ nan ∧ a.toEReal = b.toEReal
 
 instance : HasEquiv (RealFloat fmt) where
   Equiv a b := a.Equiv b
 
-noncomputable instance : DecidableLE (RealFloat fmt) := fun _ _ => Classical.propDecidable _
-noncomputable instance (a b : RealFloat fmt) : Decidable (a ≈ b) := Classical.propDecidable _
+protected def compare (a b : RealFloat fmt) : Option Ordering :=
+  if a ≠ nan ∧ b ≠ nan then
+    compare (toEReal a) (toEReal b)
+  else
+    none
+
+noncomputable instance : DecidableLE (RealFloat fmt) := fun _ _ => inferInstanceAs (Decidable (_ ∧ _))
+noncomputable instance : DecidableLT (RealFloat fmt) := fun _ _ => inferInstanceAs (Decidable (_ ∧ _))
+noncomputable instance (a b : RealFloat fmt) : Decidable (a ≈ b) := inferInstanceAs (Decidable (_ ∧ _))
 
 instance : BEq (RealFloat fmt) where
   beq a b := a ≈ b
@@ -325,15 +335,30 @@ instance : BEq (RealFloat fmt) where
 protected lemma le_def {a b : RealFloat fmt} : a ≤ b ↔ a ≠ nan ∧ b ≠ nan ∧ a.toEReal ≤ b.toEReal := (Iff.rfl)
 
 @[grind =]
+protected lemma lt_def {a b : RealFloat fmt} : a < b ↔ a ≠ nan ∧ b ≠ nan ∧ a.toEReal < b.toEReal := (Iff.rfl)
+
+@[grind =]
 protected lemma equiv_def {a b : RealFloat fmt} : a ≈ b ↔ a ≠ nan ∧ b ≠ nan ∧ a.toEReal = b.toEReal := (Iff.rfl)
+
+@[grind =]
+protected lemma compare_def {a b : RealFloat fmt} :
+    a.compare b = if a ≠ nan ∧ b ≠ nan then some (compare a.toEReal b.toEReal) else none := (rfl)
 
 @[simp, norm_cast]
 lemma toUnbounded_le {x y : RealFloat fmt} : x.toUnbounded ≤ y.toUnbounded ↔ x ≤ y := by
   simp [RealFloat.le_def, UnboundedFloat.le_def]
 
 @[simp, norm_cast]
+lemma toUnbounded_lt {x y : RealFloat fmt} : x.toUnbounded < y.toUnbounded ↔ x < y := by
+  simp [RealFloat.lt_def, UnboundedFloat.lt_def]
+
+@[simp, norm_cast]
 lemma toUnbounded_equiv {x y : RealFloat fmt} : x.toUnbounded ≈ y.toUnbounded ↔ x ≈ y := by
   simp [RealFloat.equiv_def, UnboundedFloat.equiv_def]
+
+@[simp, norm_cast]
+lemma compare_toUnbounded {x y : RealFloat fmt} : x.toUnbounded.compare y.toUnbounded = x.compare y := by
+  simp [RealFloat.compare_def, UnboundedFloat.compare_def]
 
 @[simp]
 lemma ofUnboundedInRange_le {x y : UnboundedFloat fmt}
@@ -342,10 +367,22 @@ lemma ofUnboundedInRange_le {x y : UnboundedFloat fmt}
   simp [← toUnbounded_le]
 
 @[simp]
+lemma ofUnboundedInRange_lt {x y : UnboundedFloat fmt}
+    (hx : fmt.InRange x.toFiniteReal) (hy : fmt.InRange y.toFiniteReal) :
+    ofUnboundedInRange x hx < ofUnboundedInRange y hy ↔ x < y := by
+  simp [← toUnbounded_lt]
+
+@[simp]
 lemma ofUnboundedInRange_equiv {x y : UnboundedFloat fmt}
     (hx : fmt.InRange x.toFiniteReal) (hy : fmt.InRange y.toFiniteReal) :
     ofUnboundedInRange x hx ≈ ofUnboundedInRange y hy ↔ x ≈ y := by
   simp [← toUnbounded_equiv]
+
+@[simp]
+lemma compare_ofUnboundedInRange {x y : UnboundedFloat fmt}
+    (hx : fmt.InRange x.toFiniteReal) (hy : fmt.InRange y.toFiniteReal) :
+    (ofUnboundedInRange x hx).compare (ofUnboundedInRange y hy) = x.compare y := by
+  simp [← compare_toUnbounded]
 
 @[simp] protected lemma beq_def (a b : RealFloat fmt) : (a == b) = decide (a ≈ b) := (rfl)
 @[simp] protected lemma bne_def (a b : RealFloat fmt) : (a != b) = !decide (a ≈ b) := (rfl)
@@ -353,10 +390,38 @@ lemma ofUnboundedInRange_equiv {x y : UnboundedFloat fmt}
 protected lemma le_trans {a b c : RealFloat fmt} (h : a ≤ b) (h' : b ≤ c) : a ≤ c := by grind
 protected lemma le_antisymm {a b : RealFloat fmt} (h : a ≤ b) (h' : b ≤ a) : a ≈ b := by grind
 protected lemma le_antisymm_iff {a b : RealFloat fmt} : a ≈ b ↔ a ≤ b ∧ b ≤ a := by grind
+protected lemma le_of_equiv {a b : RealFloat fmt} : a ≈ b → a ≤ b := by grind
+protected lemma le_of_le_of_equiv {a b c : RealFloat fmt} : a ≤ b → b ≈ c → a ≤ c := by grind
+protected lemma le_of_equiv_of_le {a b c : RealFloat fmt} : a ≈ b → b ≤ c → a ≤ c := by grind
+
+@[simp] protected lemma lt_irrefl {a : RealFloat fmt} : ¬ a < a := by grind
+
+protected lemma lt_iff_le_not_ge {a b : RealFloat fmt} : a < b ↔ a ≤ b ∧ ¬ b ≤ a := by grind
+protected lemma lt_trans {a b c : RealFloat fmt} : a < b → b < c → a < c := by grind
+protected lemma lt_of_le_of_lt {a b c : RealFloat fmt} : a ≤ b → b < c → a < c := by grind
+protected lemma lt_of_lt_of_le {a b c : RealFloat fmt} : a < b → b ≤ c → a < c := by grind
+protected lemma lt_asymm {a b : RealFloat fmt} : a < b → ¬ b < a := by grind
+protected lemma not_lt_of_ge {a b : RealFloat fmt} : a ≤ b → ¬ b < a := by grind
+protected lemma not_le_of_gt {a b : RealFloat fmt} : a < b → ¬ b ≤ a := by grind
+protected lemma not_equiv_of_lt {a b : RealFloat fmt} : a < b → ¬ a ≈ b := by grind
+protected lemma le_of_lt {a b : RealFloat fmt} : a < b → a ≤ b := by grind
+protected lemma lt_of_lt_of_equiv {a b c : RealFloat fmt} : a < b → b ≈ c → a < c := by grind
+protected lemma lt_of_equiv_of_lt {a b c : RealFloat fmt} : a ≈ b → b < c → a < c := by grind
 
 @[trans] lemma equiv_trans {a b c : RealFloat fmt} (h : a ≈ b) (h' : b ≈ c) : a ≈ c := by grind
 @[symm] lemma equiv_symm {a b : RealFloat fmt} (h : a ≈ b) : b ≈ a := by grind
 lemma equiv_comm {a b : RealFloat fmt} : a ≈ b ↔ b ≈ a := by grind
+
+instance : Trans (α := RealFloat fmt) (· ≈ ·) (· ≈ ·) (· ≈ ·) := ⟨RealFloat.equiv_trans⟩
+instance : Trans (α := RealFloat fmt) (· ≈ ·) (· ≤ ·) (· ≤ ·) := ⟨RealFloat.le_of_equiv_of_le⟩
+instance : Trans (α := RealFloat fmt) (· ≈ ·) (· < ·) (· < ·) := ⟨RealFloat.lt_of_equiv_of_lt⟩
+instance : Trans (α := RealFloat fmt) (· ≤ ·) (· ≈ ·) (· ≤ ·) := ⟨RealFloat.le_of_le_of_equiv⟩
+instance : Trans (α := RealFloat fmt) (· ≤ ·) (· ≤ ·) (· ≤ ·) := ⟨RealFloat.le_trans⟩
+instance : Trans (α := RealFloat fmt) (· ≤ ·) (· < ·) (· < ·) := ⟨RealFloat.lt_of_le_of_lt⟩
+instance : Trans (α := RealFloat fmt) (· < ·) (· ≈ ·) (· < ·) := ⟨RealFloat.lt_of_lt_of_equiv⟩
+instance : Trans (α := RealFloat fmt) (· < ·) (· ≤ ·) (· < ·) := ⟨RealFloat.lt_of_lt_of_le⟩
+instance : Trans (α := RealFloat fmt) (· < ·) (· < ·) (· < ·) := ⟨RealFloat.lt_trans⟩
+instance : Std.Symm (α := RealFloat fmt) (· ≈ ·) := ⟨fun _ _ => RealFloat.equiv_symm⟩
 
 @[gcongr] lemma equiv_iff_equiv {a b c d : RealFloat fmt} (hac : a ≈ c) (hbd : b ≈ d) : a ≈ b ↔ c ≈ d := by grind
 @[gcongr] lemma equiv_iff_equiv_left {a b c : RealFloat fmt} (hac : a ≈ c) : a ≈ b ↔ c ≈ b := by grind
@@ -368,13 +433,23 @@ lemma equiv_comm {a b : RealFloat fmt} : a ≈ b ↔ b ≈ a := by grind
 
 @[simp] lemma equiv_self_iff_ne_nan {a : RealFloat fmt} : a ≈ a ↔ a ≠ nan := by grind
 
-instance : @Trans (RealFloat fmt) _ _ (· ≈ ·) (· ≈ ·) (· ≈ ·) := ⟨RealFloat.equiv_trans⟩
-instance : @Std.Symm (RealFloat fmt) (· ≈ ·) := ⟨fun _ _ => RealFloat.equiv_symm⟩
+@[simp] lemma map_swap_compare {a b : RealFloat fmt} : (a.compare b).map (·.swap) = b.compare a := by grind
+@[simp] lemma any_isLE_compare_iff {a b : RealFloat fmt} : (a.compare b).any (·.isLE) ↔ a ≤ b := by grind
+@[simp] lemma any_isGE_compare_iff {a b : RealFloat fmt} : (a.compare b).any (·.isGE) ↔ b ≤ a := by grind
+@[simp] lemma compare_eq_some_lt_iff {a b : RealFloat fmt} : a.compare b = some .lt ↔ a < b := by grind
+@[simp] lemma compare_eq_some_eq_iff {a b : RealFloat fmt} : a.compare b = some .eq ↔ a ≈ b := by grind
+@[simp] lemma compare_eq_some_gt_iff {a b : RealFloat fmt} : a.compare b = some .gt ↔ b < a := by grind
+@[simp] lemma compare_eq_none_iff {a b : RealFloat fmt} : a.compare b = none ↔ a = nan ∨ b = nan := by grind
 
 @[simp] lemma not_nan_le {a : RealFloat fmt} : ¬nan ≤ a := by grind
 @[simp] lemma not_le_nan {a : RealFloat fmt} : ¬a ≤ nan := by grind
+@[simp] lemma not_nan_lt {a : RealFloat fmt} : ¬nan < a := by grind
+@[simp] lemma not_lt_nan {a : RealFloat fmt} : ¬a < nan := by grind
 @[simp] lemma not_nan_equiv {a : RealFloat fmt} : ¬nan ≈ a := by grind
 @[simp] lemma not_equiv_nan {a : RealFloat fmt} : ¬a ≈ nan := by grind
+
+@[simp] lemma compare_nan_left {a : RealFloat fmt} : nan.compare a = none := by simp
+@[simp] lemma compare_nan_right {a : RealFloat fmt} : a.compare nan = none := by simp
 
 protected lemma le_total {a b : RealFloat fmt} (ha : a ≠ nan) (hb : b ≠ nan) : a ≤ b ∨ b ≤ a := by grind
 

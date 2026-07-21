@@ -271,6 +271,31 @@ lemma getExponent_le_of_lt {x : ℝ} {e : ℤ} (hx : |x| < base ^ (e + f.precisi
     grw [Int.add_one_le_of_lt this, add_sub_right_comm, sub_add_cancel]
     simp [he]
 
+lemma getExponent_le_iff {x : ℝ} {e : ℤ} :
+    f.getExponent x ≤ e ↔ |x| < base ^ (e + f.precision) ∧ f.minExp ≤ e := by
+  constructor
+  · intro h
+    constructor
+    · contrapose! h
+      exact lt_getExponent_of_ge h
+    · grw [minExp_le_getExponent, h]
+  · intro ⟨h₁, h₂⟩
+    exact getExponent_le_of_lt h₁ h₂
+
+lemma getExponent_le_iff_of_le {x : ℝ} {e : ℤ} (h : f.minExp ≤ e) :
+    f.getExponent x ≤ e ↔ |x| < base ^ (e + f.precision) := by
+  simp [getExponent_le_iff, h]
+
+@[gcongr]
+lemma getExponent_mono_of_nonneg {x y : ℝ} (hxy : x ≤ y) (hx : 0 ≤ x) :
+    f.getExponent x ≤ f.getExponent y := by
+  grw [getExponent_le_iff_of_le minExp_le_getExponent, hxy, ← getExponent_le_iff_of_le minExp_le_getExponent]
+
+@[gcongr low]
+lemma getExponent_anti_of_nonpos {x y : ℝ} (hxy : x ≤ y) (hx : y ≤ 0) :
+    f.getExponent y ≤ f.getExponent x := by
+  grw [getExponent_le_iff_of_le minExp_le_getExponent, ← hxy, ← getExponent_le_iff_of_le minExp_le_getExponent]
+
 lemma abs_lt_zpow_getExponent {x : ℝ} : |x| < base ^ (f.getExponent x + f.precision) := by
   simpa using mt (f.lt_getExponent_of_ge (x := x) (e := f.getExponent x))
 
@@ -315,14 +340,70 @@ lemma InRange.getExponent_le {x : ℝ} (h : InRange f x) :
   · simp [h.abs_lt]
   · grind
 
+@[simp]
 lemma IsRounded.getMantissa_eq_zero_iff {x : ℝ} (h : IsRounded f x) :
     f.getMantissa x = 0 ↔ x = 0 := by
-  constructor
-  · intro h'
-    rw [← h.getMantissa_mul_base_pow_getExponent, h']
+  conv_rhs => rw [← h.getMantissa_mul_base_pow_getExponent]
+  simp
+
+@[simp]
+lemma IsRounded.getMantissa_nonneg_iff {x : ℝ} (h : IsRounded f x) :
+    0 ≤ f.getMantissa x ↔ 0 ≤ x := by
+  conv_rhs => rw [← h.getMantissa_mul_base_pow_getExponent]
+  simp
+
+@[simp]
+lemma IsRounded.getMantissa_nonpos_iff {x : ℝ} (h : IsRounded f x) :
+    f.getMantissa x ≤ 0 ↔ x ≤ 0 := by
+  conv_rhs => rw [← h.getMantissa_mul_base_pow_getExponent]
+  simp [mul_nonpos_iff]
+
+@[simp]
+lemma IsRounded.getMantissa_lt_zero_iff {x : ℝ} (h : IsRounded f x) :
+    f.getMantissa x < 0 ↔ x < 0 := by contrapose!; rw [h.getMantissa_nonneg_iff]
+
+@[simp]
+lemma IsRounded.getMantissa_pos_iff {x : ℝ} (h : IsRounded f x) :
+    0 < f.getMantissa x ↔ 0 < x := by contrapose!; rw [h.getMantissa_nonpos_iff]
+
+@[simp]
+lemma IsRounded.getMantissa_neg {x : ℝ} (h : IsRounded f x) :
+    f.getMantissa (-x) = -f.getMantissa x := by
+  have h₁ := h.getMantissa_mul_base_pow_getExponent
+  have h₂ := h.neg.getMantissa_mul_base_pow_getExponent
+  conv_rhs at h₂ => rw [← h₁]
+  simpa [← neg_mul, ← Int.cast_neg] using h₂
+
+@[simp]
+lemma IsRounded.getMantissa_abs {x : ℝ} (h : IsRounded f x) :
+    f.getMantissa |x| = |f.getMantissa x| := by
+  cases abs_cases x <;> simp [*, abs_of_nonneg, abs_of_neg]
+
+lemma IsRounded.compare_eq_of_nonneg {x y : ℝ}
+    (hx : IsRounded f x) (hy : IsRounded f y) (hx' : 0 ≤ x) (hy' : 0 ≤ y) :
+    compare x y = (compare (f.getExponent x) (f.getExponent y)).then
+      (compare (f.getMantissa x) (f.getMantissa y)) := by
+  obtain he | he | he := lt_trichotomy (f.getExponent x) (f.getExponent y)
+  · rw [Std.compare_eq_lt.mpr he, Ordering.lt_then, Std.compare_eq_lt]
+    contrapose! he
+    grw [he]
+  · replace hx := hx.getMantissa_mul_base_pow_getExponent
+    replace hy := hy.getMantissa_mul_base_pow_getExponent
+    rw [he] at hx
+    rw [he, Std.compare_self, Ordering.eq_then]
+    conv => enter [1, 1]; rw [← hx]
+    conv => enter [1, 2]; rw [← hy]
     simp
-  · rintro rfl
-    simp [getMantissa]
+  · rw [Std.compare_eq_gt.mpr he, Ordering.gt_then, Std.compare_eq_gt]
+    contrapose! he
+    grw [he]
+
+lemma IsRounded.compare_eq_of_nonpos {x y : ℝ}
+    (hx : IsRounded f x) (hy : IsRounded f y) (hx' : x ≤ 0) (hy' : y ≤ 0) :
+    compare x y = (compare (f.getExponent y) (f.getExponent x)).then
+      (compare (f.getMantissa x) (f.getMantissa y)) := by
+  rw [← compare_neg, compare_eq_of_nonneg hy.neg hx.neg (by simpa) (by simpa),
+    getExponent_neg, getExponent_neg, hx.getMantissa_neg, hy.getMantissa_neg, compare_neg]
 
 noncomputable def maxValue (f : FloatFormat base) : ℝ :=
   (base ^ f.precision - 1) * base ^ (f.infExp - f.precision : ℤ)

@@ -331,3 +331,60 @@ theorem EReal.abs_ofNat {n : Nat} [n.AtLeastTwo] : (ofNat(n) : EReal).abs = ofNa
   rw [← Nat.cast_ofNat, EReal.abs_natCast, Nat.cast_ofNat]
 
 attribute [simp] zpow_ne_zero zpow_pos zpow_nonneg
+
+instance {α : Type*} [LinearOrder α] : Std.LawfulOrderOrd α where
+  isLE_compare a b := by
+    rw [LinearOrder.compare_eq_compareOfLessAndEq, isLE_compareOfLessAndEq le_antisymm not_le le_total]
+  isGE_compare a b := by
+    rw [LinearOrder.compare_eq_compareOfLessAndEq, isGE_compareOfLessAndEq le_antisymm not_le le_total]
+
+@[grind =]
+lemma compare_eq_ite {α : Type*} [LE α] [DecidableLE α] [Ord α] [Std.LawfulOrderOrd α] {a b : α} :
+    compare a b = if a ≤ b then if b ≤ a then .eq else .lt else .gt := by
+  simp only [← Std.isLE_compare (a := a), ← Std.isGE_compare (a := a)]
+  generalize compare a b = o
+  decide +revert
+
+attribute [grind =] Ordering.isLE Ordering.isGE Ordering.swap
+
+attribute [gcongr low] abs_le_abs_of_nonpos
+
+lemma compare_eq_compare_of_le {α β : Type*} {a b : α} {c d : β} [LE α] [LE β] [Ord α] [Ord β]
+    [Std.LawfulOrderOrd α] [Std.LawfulOrderOrd β] (h₁ : a ≤ b ↔ c ≤ d) (h₂ : b ≤ a ↔ d ≤ c) :
+    compare a b = compare c d := by
+  classical simp [compare_eq_ite, h₁, h₂]
+
+@[simp]
+lemma compare_add_left {α : Type*} [LinearOrder α] [Semiring α] [IsStrictOrderedRing α]
+    {a b c : α} : compare (c + a) (c + b) = compare a b :=
+  compare_eq_compare_of_le (add_le_add_iff_left c) (add_le_add_iff_left c)
+
+@[simp]
+lemma compare_add_right {α : Type*} [LinearOrder α] [Semiring α] [IsStrictOrderedRing α]
+    {a b c : α} : compare (a + c) (b + c) = compare a b :=
+  compare_eq_compare_of_le (add_le_add_iff_right c) (add_le_add_iff_right c)
+
+@[simp]
+lemma compare_neg {α : Type*} [LinearOrder α] [Ring α] [IsStrictOrderedRing α] {a b : α} :
+    compare (-a) (-b) = compare b a :=
+  compare_eq_compare_of_le neg_le_neg_iff neg_le_neg_iff
+
+@[simp]
+lemma compare_mul_left_of_pos {α : Type*} [LinearOrder α] [Semiring α] [IsStrictOrderedRing α]
+    {a b c : α} (h : 0 < c) : compare (c * a) (c * b) = compare a b :=
+  compare_eq_compare_of_le (mul_le_mul_iff_of_pos_left h) (mul_le_mul_iff_of_pos_left h)
+
+@[simp]
+lemma compare_mul_right_of_pos {α : Type*} [LinearOrder α] [Semiring α] [IsStrictOrderedRing α]
+    {a b c : α} (h : 0 < c) : compare (a * c) (b * c) = compare a b :=
+  compare_eq_compare_of_le (mul_le_mul_iff_of_pos_right h) (mul_le_mul_iff_of_pos_right h)
+
+@[simp]
+lemma compare_natCast {α : Type*} [LinearOrder α] [Semiring α] [IsStrictOrderedRing α] {a b : ℕ} :
+    compare (a : α) (b : α) = compare a b :=
+  compare_eq_compare_of_le Nat.cast_le Nat.cast_le
+
+@[simp]
+lemma compare_intCast {α : Type*} [LinearOrder α] [Ring α] [IsStrictOrderedRing α] {a b : ℤ} :
+    compare (a : α) (b : α) = compare a b :=
+  compare_eq_compare_of_le Int.cast_le Int.cast_le
