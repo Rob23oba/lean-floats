@@ -481,6 +481,12 @@ noncomputable def RealFloat.ofFloat (f : Float) : RealFloat .binary64 :=
 noncomputable def RealFloat.ofFloat32 (f : Float32) : RealFloat .binary32 :=
   ofUnbounded (UnpackedFloat.toUnboundedFloat (fmt := .binary32) f.toModel.unpack)
 
+noncomputable def RealFloat.ofFloatModel (f : Float.Model) : RealFloat .binary64 :=
+  ofUnbounded (UnpackedFloat.toUnboundedFloat (fmt := .binary64) f.unpack)
+
+noncomputable def RealFloat.ofFloat32Model (f : Float32.Model) : RealFloat .binary32 :=
+  ofUnbounded (UnpackedFloat.toUnboundedFloat (fmt := .binary32) f.unpack)
+
 noncomputable def RealFloat.toFloat (f : RealFloat .binary64) : Float :=
   .ofModel <| .pack (UnpackedFloat.ofUnboundedFloat (fmt := .binary64) f.toUnbounded)
 
@@ -772,54 +778,104 @@ lemma RealFloat.float32ToUSize_eq (a : Float32) :
 
 /-
 lemma RealFloat.floatToInt8_eq (a : Float) :
-    a.toInt8 = Int8.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+    a.toInt8 = Int8.ofIntClamp (RoundingFunction.towardsZero (ofFloatModel a).toReal) := by
   simp [Float.toInt8, ofFloat, Float.Model.unpack, Float.Model.toInt8,
     UnpackedFloat.toInt8_eq (fmt := .binary64)]
 
 lemma RealFloat.float32ToInt8_eq (a : Float32) :
-    a.toInt8 = Int8.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+    a.toInt8 = Int8.ofIntClamp (RoundingFunction.towardsZero (ofFloat32 a).toReal) := by
   simp [Float32.toInt8, ofFloat32, Float32.Model.unpack, Float32.Model.toInt8,
     UnpackedFloat.toInt8_eq (fmt := .binary32)]
 
 lemma RealFloat.floatToInt16_eq (a : Float) :
-    a.toInt16 = Int16.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+    a.toInt16 = Int16.ofIntClamp (RoundingFunction.towardsZero (ofFloat a).toReal) := by
   simp [Float.toInt16, ofFloat, Float.Model.unpack, Float.Model.toInt16,
     UnpackedFloat.toInt16_eq (fmt := .binary64)]
 
 lemma RealFloat.float32ToInt16_eq (a : Float32) :
-    a.toInt16 = Int16.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+    a.toInt16 = Int16.ofIntClamp (RoundingFunction.towardsZero (ofFloat32 a).toReal) := by
   simp [Float32.toInt16, ofFloat32, Float32.Model.unpack, Float32.Model.toInt16,
     UnpackedFloat.toInt16_eq (fmt := .binary32)]
 
 lemma RealFloat.floatToInt32_eq (a : Float) :
-    a.toInt32 = Int32.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+    a.toInt32 = Int32.ofIntClamp (RoundingFunction.towardsZero (ofFloat a).toReal) := by
   simp [Float.toInt32, ofFloat, Float.Model.unpack, Float.Model.toInt32,
     UnpackedFloat.toInt32_eq (fmt := .binary64)]
 
 lemma RealFloat.float32ToInt32_eq (a : Float32) :
-    a.toInt32 = Int32.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+    a.toInt32 = Int32.ofIntClamp (RoundingFunction.towardsZero (ofFloat32 a).toReal) := by
   simp [Float32.toInt32, ofFloat32, Float32.Model.unpack, Float32.Model.toInt32,
     UnpackedFloat.toInt32_eq (fmt := .binary32)]
 
 lemma RealFloat.floatToInt64_eq (a : Float) :
-    a.toInt64 = Int64.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+    a.toInt64 = Int64.ofIntClamp (RoundingFunction.towardsZero (ofFloat a).toReal) := by
   simp [Float.toInt64, ofFloat, Float.Model.unpack, Float.Model.toInt64,
     UnpackedFloat.toInt64_eq (fmt := .binary64)]
 
 lemma RealFloat.float32ToInt64_eq (a : Float32) :
-    a.toInt64 = Int64.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+    a.toInt64 = Int64.ofIntClamp (RoundingFunction.towardsZero (ofFloat32 a).toReal) := by
   simp [Float32.toInt64, ofFloat32, Float32.Model.unpack, Float32.Model.toInt64,
     UnpackedFloat.toInt64_eq (fmt := .binary32)]
 
 lemma RealFloat.floatToISize_eq (a : Float) :
-    a.toISize = ISize.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+    a.toISize = ISize.ofIntClamp (RoundingFunction.towardsZero (ofFloat a).toReal) := by
   simp [Float.toISize, ofFloat, Float.Model.unpack, Float.Model.toISize,
     UnpackedFloat.toISize_eq (fmt := .binary64)]
 
 lemma RealFloat.float32ToISize_eq (a : Float32) :
-    a.toISize = ISize.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+    a.toISize = ISize.ofIntClamp (RoundingFunction.towardsZero (ofFloat32 a).toReal) := by
   simp [Float32.toISize, ofFloat32, Float32.Model.unpack, Float32.Model.toISize,
     UnpackedFloat.toISize_eq (fmt := .binary32)]
 -/
+
+lemma RealFloat.floatToInt8_eq (a : Float.Model) :
+    a.toInt8 = Int8.ofIntClamp (RoundingFunction.towardsZero (ofFloatModel a).toReal) := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.toInt8,
+    UnpackedFloat.toInt8_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToInt8_eq (a : Float32.Model) :
+    a.toInt8 = Int8.ofIntClamp (RoundingFunction.towardsZero (ofFloat32Model a).toReal) := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.toInt8,
+    UnpackedFloat.toInt8_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToInt16_eq (a : Float.Model) :
+    a.toInt16 = Int16.ofIntClamp (RoundingFunction.towardsZero (ofFloatModel a).toReal) := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.toInt16,
+    UnpackedFloat.toInt16_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToInt16_eq (a : Float32.Model) :
+    a.toInt16 = Int16.ofIntClamp (RoundingFunction.towardsZero (ofFloat32Model a).toReal) := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.toInt16,
+    UnpackedFloat.toInt16_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToInt32_eq (a : Float.Model) :
+    a.toInt32 = Int32.ofIntClamp (RoundingFunction.towardsZero (ofFloatModel a).toReal) := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.toInt32,
+    UnpackedFloat.toInt32_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToInt32_eq (a : Float32.Model) :
+    a.toInt32 = Int32.ofIntClamp (RoundingFunction.towardsZero (ofFloat32Model a).toReal) := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.toInt32,
+    UnpackedFloat.toInt32_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToInt64_eq (a : Float.Model) :
+    a.toInt64 = Int64.ofIntClamp (RoundingFunction.towardsZero (ofFloatModel a).toReal) := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.toInt64,
+    UnpackedFloat.toInt64_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToInt64_eq (a : Float32.Model) :
+    a.toInt64 = Int64.ofIntClamp (RoundingFunction.towardsZero (ofFloat32Model a).toReal) := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.toInt64,
+    UnpackedFloat.toInt64_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToISize_eq (a : Float.Model) :
+    a.toISize = ISize.ofIntClamp (RoundingFunction.towardsZero (ofFloatModel a).toReal) := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.toISize,
+    UnpackedFloat.toISize_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToISize_eq (a : Float32.Model) :
+    a.toISize = ISize.ofIntClamp (RoundingFunction.towardsZero (ofFloat32Model a).toReal) := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.toISize,
+    UnpackedFloat.toISize_eq (fmt := .binary32)]
 
 end LeanFloats
