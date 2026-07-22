@@ -320,6 +320,147 @@ lemma beq_eq_toUnboundedFloat_equiv {fmt common} [HasCommonOfFormat fmt common]
   rw [Bool.eq_iff_iff, decide_eq_true_eq, UnpackedFloat.beq, beq_iff_eq,
     compare_eq_compare_toUnboundedFloat hx hy, ← UnboundedFloat.compare_eq_some_eq_iff]
 
+lemma toInt_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsRounded fmt x) (negInf posInf : ℤ) :
+    x.toInt negInf posInf =
+      match (toUnboundedFloat x : UnboundedFloat common.toFloatFormat) with
+      | .ofValidNNReal s x _h => s * ⌊x⌋₊
+      | .infinity 1 => posInf
+      | .infinity (-1) => negInf
+      | .nan => 0 := by
+  cases HasCommonOfFormat.elim fmt
+  fun_cases UnpackedFloat.toInt
+  · simp
+  · simp
+  · simp
+  · simp
+  · simp only [toUnboundedFloat_finite_of_isRounded hx]
+    unfold UnpackedFloat.roundToInt; split; split
+    rename_i s m e hm _ mant' exp' h₁ _ femant fexp h₂
+    symm at h₁ h₂
+    cases e using Int.negInduction <;> norm_cast <;>
+      simp_all [UnpackedFloat.decreaseExponent, UnpackedFloat.shiftToExponent,
+        Nat.shiftLeft_eq, -Nat.cast_mul, ← div_eq_mul_inv, Nat.floor_div_two_pow]
+
+lemma toNat_toInt_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x) (posInf : ℕ)
+    (h : posInf ≤ 1 <<< fmt.infinityExponent := by assumption) :
+    min (x.toInt 0 posInf).toNat posInf =
+      min ⌊(RealFloat.ofUnbounded
+        (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal⌋₊ posInf := by
+  rw [Nat.shiftLeft_eq] at h
+  cases HasCommonOfFormat.elim fmt
+  rw [toInt_eq hx.isRounded]
+  split
+  · rename_i s x h _
+    cases s <;> simp_all [isValid_iff_isRounded_and_inRange,
+      RealFloat.ofUnbounded_eq_ofUnboundedInRange, Nat.floor_of_nonpos]
+  · simp [*]; norm_cast; simpa [-Nat.cast_pow] using h
+  · simp [Nat.floor_of_nonpos, *]
+  · simp [*]
+
+lemma max_min_toInt_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x) (negInf posInf : ℤ)
+    (hneg : negInf < 0 := by simp) (hpos : 0 < posInf := by simp)
+    (hp : posInf ≤ 1 <<< fmt.infinityExponent := by norm_cast)
+    (hn : -1 <<< fmt.infinityExponent ≤ negInf := by norm_cast) :
+    max negInf (min posInf (x.toInt negInf posInf)) =
+      max negInf (min posInf (RoundingFunction.towardsZero (RealFloat.ofUnbounded
+        (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal)) := by
+  rw [Nat.shiftLeft_eq] at hp hn
+  cases HasCommonOfFormat.elim fmt
+  rw [toInt_eq hx.isRounded]
+  have : negInf ≤ posInf := by lia
+  have : ¬ posInf ≤ negInf := by lia
+  split
+  · rename_i s x h _
+    cases s <;> simp_all [isValid_iff_isRounded_and_inRange,
+      RealFloat.ofUnbounded_eq_ofUnboundedInRange, RoundingFunction.balanced_apply_of_nonneg]
+  · simp [*]; norm_cast; simpa [-Nat.cast_pow, max_min_distrib_left, *] using hp
+  · simp [*]; norm_cast; simpa [-Nat.cast_pow, hneg.le, *] using hn
+  · simp [*]
+
+lemma toUInt8_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (h : 0xFF ≤ 1 <<< fmt.infinityExponent := by decide) :
+    x.toUInt8 = UInt8.ofNatClamp
+      ⌊(RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal⌋₊ := by
+  simpa [UnpackedFloat.toUInt8, ← UInt8.toNat_inj, UInt8.toNat_ofNatClamp] using toNat_toInt_eq hx 0xFF
+
+lemma toUInt16_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (h : 0xFFFF ≤ 1 <<< fmt.infinityExponent := by decide) :
+    x.toUInt16 = UInt16.ofNatClamp
+      ⌊(RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal⌋₊ := by
+  simpa [UnpackedFloat.toUInt16, ← UInt16.toNat_inj, UInt16.toNat_ofNatClamp] using toNat_toInt_eq hx 0xFFFF
+
+lemma toUInt32_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (h : 0xFFFF_FFFF ≤ 1 <<< fmt.infinityExponent := by decide) :
+    x.toUInt32 = UInt32.ofNatClamp
+      ⌊(RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal⌋₊ := by
+  simpa [UnpackedFloat.toUInt32, ← UInt32.toNat_inj, UInt32.toNat_ofNatClamp] using toNat_toInt_eq hx 0xFFFF_FFFF
+
+lemma toUInt64_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (h : 0xFFFF_FFFF_FFFF_FFFF ≤ 1 <<< fmt.infinityExponent := by decide) :
+    x.toUInt64 = UInt64.ofNatClamp
+      ⌊(RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal⌋₊ := by
+  simpa [UnpackedFloat.toUInt64, ← UInt64.toNat_inj, UInt64.toNat_ofNatClamp] using toNat_toInt_eq hx 0xFFFF_FFFF_FFFF_FFFF
+
+lemma toUSize_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (h : 0xFFFF_FFFF_FFFF_FFFF ≤ 1 <<< fmt.infinityExponent := by decide) :
+    x.toUSize = USize.ofNatClamp
+      ⌊(RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal⌋₊ := by
+  simpa [UnpackedFloat.toUSize, ← USize.toNat_inj, USize.toNat_ofNatClamp]
+    using toNat_toInt_eq hx (USize.size - 1) (le_trans (Nat.pred_le_pred USize.size_le) h)
+
+lemma toInt8_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (hp : 0x7f ≤ 1 <<< fmt.infinityExponent := by decide)
+    (hn : -(1 <<< fmt.infinityExponent : ℤ) ≤ -0x80 := by decide) :
+    x.toInt8 = Int8.ofIntClamp
+      (RoundingFunction.towardsZero (RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal) := by
+  simpa [UnpackedFloat.toInt8, ← Int8.toInt_inj, Int8.toInt_ofIntClamp_eq_max, Int8.maxValue] using max_min_toInt_eq hx (-0x80) 0x7f
+
+lemma toInt16_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (hp : 0x7fff ≤ 1 <<< fmt.infinityExponent := by decide)
+    (hn : -(1 <<< fmt.infinityExponent : ℤ) ≤ -0x8000 := by decide) :
+    x.toInt16 = Int16.ofIntClamp
+      (RoundingFunction.towardsZero (RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal) := by
+  simpa [UnpackedFloat.toInt16, ← Int16.toInt_inj, Int16.toInt_ofIntClamp_eq_max, Int16.maxValue] using max_min_toInt_eq hx (-0x8000) 0x7fff
+
+lemma toInt32_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (hp : 0x7fff_ffff ≤ 1 <<< fmt.infinityExponent := by decide)
+    (hn : -(1 <<< fmt.infinityExponent : ℤ) ≤ -0x8000_0000 := by decide) :
+    x.toInt32 = Int32.ofIntClamp
+      (RoundingFunction.towardsZero (RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal) := by
+  simpa [UnpackedFloat.toInt32, ← Int32.toInt_inj, Int32.toInt_ofIntClamp_eq_max, Int32.maxValue] using max_min_toInt_eq hx (-0x8000_0000) 0x7fff_ffff
+
+lemma toInt64_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (hp : 0x7fff_ffff_ffff_ffff ≤ 1 <<< fmt.infinityExponent := by decide)
+    (hn : -(1 <<< fmt.infinityExponent : ℤ) ≤ -0x8000_0000_0000_0000 := by decide) :
+    x.toInt64 = Int64.ofIntClamp
+      (RoundingFunction.towardsZero (RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal) := by
+  simpa [UnpackedFloat.toInt64, ← Int64.toInt_inj, Int64.toInt_ofIntClamp_eq_max, Int64.maxValue]
+    using max_min_toInt_eq hx (-0x8000_0000_0000_0000) 0x7fff_ffff_ffff_ffff
+
+lemma toISize_eq {fmt common} [HasCommonOfFormat fmt common]
+    {x : UnpackedFloat} (hx : IsValid fmt x)
+    (hp : 0x7fff_ffff_ffff_ffff ≤ 1 <<< fmt.infinityExponent := by decide)
+    (hn : -(1 <<< fmt.infinityExponent : ℤ) ≤ -0x8000_0000_0000_0000 := by decide) :
+    x.toISize = ISize.ofIntClamp
+      (RoundingFunction.towardsZero (RealFloat.ofUnbounded (toUnboundedFloat x : UnboundedFloat common.toFloatFormat)).toReal) := by
+  simpa [UnpackedFloat.toISize, ← ISize.toInt_inj, ISize.toInt_ofIntClamp_eq_max, ISize.maxValue]
+    using max_min_toInt_eq hx ISize.minValue.toInt ISize.maxValue.toInt
+      ISize.toInt_minValue_lt_zero (lt_of_lt_of_le (by decide) ISize.le_toInt_maxValue)
+      (le_trans (ISize.toInt_le_int64MaxValue _) (Nat.cast_le.mpr hp))
+      (le_trans hn (ISize.int64MinValue_le_toInt _))
+
 end UnpackedFloat
 
 lemma UnpackedFloat.CommonFormat.toFloatFormat_binary64 :
@@ -576,5 +717,109 @@ lemma RealFloat.toFloat_beq {a b : RealFloat .binary64} : (a.toFloat == b.toFloa
 
 lemma RealFloat.toFloat32_beq {a b : RealFloat .binary32} : (a.toFloat32 == b.toFloat32) = (a == b) := by
   simp [← ofFloat32_beq]
+
+lemma RealFloat.floatToUInt8_eq (a : Float) :
+    a.toUInt8 = UInt8.ofNatClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toUInt8, ofFloat, Float.Model.unpack, Float.Model.toUInt8,
+    UnpackedFloat.toUInt8_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToUInt8_eq (a : Float32) :
+    a.toUInt8 = UInt8.ofNatClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toUInt8, ofFloat32, Float32.Model.unpack, Float32.Model.toUInt8,
+    UnpackedFloat.toUInt8_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToUInt16_eq (a : Float) :
+    a.toUInt16 = UInt16.ofNatClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toUInt16, ofFloat, Float.Model.unpack, Float.Model.toUInt16,
+    UnpackedFloat.toUInt16_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToUInt16_eq (a : Float32) :
+    a.toUInt16 = UInt16.ofNatClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toUInt16, ofFloat32, Float32.Model.unpack, Float32.Model.toUInt16,
+    UnpackedFloat.toUInt16_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToUInt32_eq (a : Float) :
+    a.toUInt32 = UInt32.ofNatClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toUInt32, ofFloat, Float.Model.unpack, Float.Model.toUInt32,
+    UnpackedFloat.toUInt32_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToUInt32_eq (a : Float32) :
+    a.toUInt32 = UInt32.ofNatClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toUInt32, ofFloat32, Float32.Model.unpack, Float32.Model.toUInt32,
+    UnpackedFloat.toUInt32_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToUInt64_eq (a : Float) :
+    a.toUInt64 = UInt64.ofNatClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toUInt64, ofFloat, Float.Model.unpack, Float.Model.toUInt64,
+    UnpackedFloat.toUInt64_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToUInt64_eq (a : Float32) :
+    a.toUInt64 = UInt64.ofNatClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toUInt64, ofFloat32, Float32.Model.unpack, Float32.Model.toUInt64,
+    UnpackedFloat.toUInt64_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToUSize_eq (a : Float) :
+    a.toUSize = USize.ofNatClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toUSize, ofFloat, Float.Model.unpack, Float.Model.toUSize,
+    UnpackedFloat.toUSize_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToUSize_eq (a : Float32) :
+    a.toUSize = USize.ofNatClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toUSize, ofFloat32, Float32.Model.unpack, Float32.Model.toUSize,
+    UnpackedFloat.toUSize_eq (fmt := .binary32)]
+
+-- These are opaque?
+
+/-
+lemma RealFloat.floatToInt8_eq (a : Float) :
+    a.toInt8 = Int8.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toInt8, ofFloat, Float.Model.unpack, Float.Model.toInt8,
+    UnpackedFloat.toInt8_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToInt8_eq (a : Float32) :
+    a.toInt8 = Int8.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toInt8, ofFloat32, Float32.Model.unpack, Float32.Model.toInt8,
+    UnpackedFloat.toInt8_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToInt16_eq (a : Float) :
+    a.toInt16 = Int16.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toInt16, ofFloat, Float.Model.unpack, Float.Model.toInt16,
+    UnpackedFloat.toInt16_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToInt16_eq (a : Float32) :
+    a.toInt16 = Int16.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toInt16, ofFloat32, Float32.Model.unpack, Float32.Model.toInt16,
+    UnpackedFloat.toInt16_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToInt32_eq (a : Float) :
+    a.toInt32 = Int32.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toInt32, ofFloat, Float.Model.unpack, Float.Model.toInt32,
+    UnpackedFloat.toInt32_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToInt32_eq (a : Float32) :
+    a.toInt32 = Int32.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toInt32, ofFloat32, Float32.Model.unpack, Float32.Model.toInt32,
+    UnpackedFloat.toInt32_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToInt64_eq (a : Float) :
+    a.toInt64 = Int64.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toInt64, ofFloat, Float.Model.unpack, Float.Model.toInt64,
+    UnpackedFloat.toInt64_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToInt64_eq (a : Float32) :
+    a.toInt64 = Int64.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toInt64, ofFloat32, Float32.Model.unpack, Float32.Model.toInt64,
+    UnpackedFloat.toInt64_eq (fmt := .binary32)]
+
+lemma RealFloat.floatToISize_eq (a : Float) :
+    a.toISize = ISize.ofIntClamp ⌊(ofFloat a).toReal⌋₊ := by
+  simp [Float.toISize, ofFloat, Float.Model.unpack, Float.Model.toISize,
+    UnpackedFloat.toISize_eq (fmt := .binary64)]
+
+lemma RealFloat.float32ToISize_eq (a : Float32) :
+    a.toISize = ISize.ofIntClamp ⌊(ofFloat32 a).toReal⌋₊ := by
+  simp [Float32.toISize, ofFloat32, Float32.Model.unpack, Float32.Model.toISize,
+    UnpackedFloat.toISize_eq (fmt := .binary32)]
+-/
 
 end LeanFloats

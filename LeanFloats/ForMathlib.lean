@@ -3,6 +3,7 @@ public import Mathlib.Data.EReal.Inv
 public import Mathlib.Data.Sign.Defs
 public import Mathlib.Data.Int.Log
 public import Mathlib.Data.Nat.Bitwise
+public import Mathlib.Data.NNReal.Basic
 
 public section
 
@@ -404,3 +405,71 @@ lemma compare_nnrealToENNReal {a b : NNReal} : compare (a : ENNReal) (b : ENNRea
 @[simp]
 lemma compare_erealNeg {a b : EReal} : compare (-a) (-b) = compare b a :=
   compare_eq_compare_of_le EReal.neg_le_neg_iff EReal.neg_le_neg_iff
+
+lemma Nat.floor_div_natCast {α : Type*} [Semifield α] [LinearOrder α]
+    [FloorSemiring α] [IsStrictOrderedRing α]
+    (x : α) (n : ℕ) : ⌊x / n⌋₊ = ⌊x⌋₊ / n := by
+  by_cases! hn : n = 0
+  · simp_all
+  simpa [hn] using (Nat.mul_cast_floor_div_cancel hn (x / n)).symm
+
+lemma Nat.floor_div_two_pow {α : Type*} [Semifield α] [LinearOrder α]
+    [FloorSemiring α] [IsStrictOrderedRing α]
+    (x : α) (n : ℕ) : ⌊x / 2 ^ n⌋₊ = ⌊x⌋₊ >>> n := by
+  norm_cast
+  rw [Nat.floor_div_natCast, Nat.shiftRight_eq_div_pow]
+
+@[simp]
+lemma Nat.floor_intCast {α : Type*} [Ring α] [LinearOrder α] [FloorRing α]
+    [IsOrderedRing α] (n : ℤ) : ⌊(n : α)⌋₊ = n.toNat := by
+  simp [← Int.floor_toNat, Int.floor_intCast]
+
+@[simp, norm_cast]
+lemma Nat.floor_nnrealCoe (n : NNReal) : ⌊(n : ℝ)⌋₊ = ⌊n⌋₊ := (rfl)
+
+@[simp, norm_cast]
+lemma Int.floor_nnrealCoe (n : NNReal) : ⌊(n : ℝ)⌋ = ⌊n⌋₊ := by
+  simp [← Int.floor_toNat, ← Nat.floor_nnrealCoe, Int.floor_nonneg]
+
+lemma UInt8.toNat_ofNatClamp (n : Nat) :
+    (UInt8.ofNatClamp n).toNat = min n 0xFF := by
+  simp [ofNatClamp, apply_dite toNat]; lia
+
+lemma UInt16.toNat_ofNatClamp (n : Nat) :
+    (UInt16.ofNatClamp n).toNat = min n 0xFFFF := by
+  simp [ofNatClamp, apply_dite toNat]; lia
+
+lemma UInt32.toNat_ofNatClamp (n : Nat) :
+    (UInt32.ofNatClamp n).toNat = min n 0xFFFF_FFFF := by
+  simp [ofNatClamp, apply_dite toNat]; lia
+
+lemma UInt64.toNat_ofNatClamp (n : Nat) :
+    (UInt64.ofNatClamp n).toNat = min n 0xFFFF_FFFF_FFFF_FFFF := by
+  simp [ofNatClamp, apply_dite toNat]; lia
+
+lemma USize.toNat_ofNatClamp (n : Nat) :
+    (USize.ofNatClamp n).toNat = min n (USize.size - 1) := by
+  simp [ofNatClamp, apply_dite toNat]; lia
+
+lemma Int8.toInt_ofIntClamp_eq_max (n : Int) :
+    (Int8.ofIntClamp n).toInt = max (-0x80) (min 0x7f n) := by
+  simp [ofIntClamp, apply_dite toInt]; lia
+
+lemma Int16.toInt_ofIntClamp_eq_max (n : Int) :
+    (Int16.ofIntClamp n).toInt = max (-0x8000) (min 0x7fff n) := by
+  simp [ofIntClamp, apply_dite toInt]; lia
+
+lemma Int32.toInt_ofIntClamp_eq_max (n : Int) :
+    (Int32.ofIntClamp n).toInt = max (-0x8000_0000) (min 0x7fff_ffff n) := by
+  simp [ofIntClamp, apply_dite toInt]; lia
+
+lemma Int64.toInt_ofIntClamp_eq_max (n : Int) :
+    (Int64.ofIntClamp n).toInt = max (-0x8000_0000_0000_0000) (min 0x7fff_ffff_ffff_ffff n) := by
+  simp [ofIntClamp, apply_dite toInt]; lia
+
+lemma ISize.toInt_ofIntClamp_eq_max (n : Int) :
+    (ISize.ofIntClamp n).toInt = max ISize.minValue.toInt (min ISize.maxValue.toInt n) := by
+  simp only [ofIntClamp, toInt_minValue, toInt_maxValue, apply_dite toInt, toInt_ofIntLE,
+    dite_eq_ite]
+  have : 0 < 2 ^ (System.Platform.numBits - 1) := Nat.two_pow_pos _
+  grind
