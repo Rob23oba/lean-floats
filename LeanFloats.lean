@@ -1,2 +1,2 @@
 module
-public import LeanFloats.UnpackedFloat.Operations
+public import LeanFloats.UnpackedFloat.OfScientific

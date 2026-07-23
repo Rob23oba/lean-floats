@@ -2,6 +2,8 @@ module
 public import LeanFloats.UnpackedFloat.Valid
 public import LeanFloats.UnpackedFloat.Rounding
 
+public section
+
 namespace LeanFloats.UnpackedFloat
 
 open Float.Model
@@ -69,6 +71,23 @@ lemma toUnboundedFloat_sub {x y : UnpackedFloat}
       (toUnboundedFloat x : UnboundedFloat fmt.toFloatFormat).sub (toUnboundedFloat y) := by
   simp [sub_eq_add_neg, toUnboundedFloat_add, hx, hy.neg]
 
+lemma toUnboundedFloat_mul_finite {fmt fmt' common}
+    [HasCommonOfFormat fmt common] [HasCommonOfFloatFormat fmt' common] {s m e hm s₂ m₂ e₂ hm₂}
+    (hx : IsRounded fmt (.finite s m e hm)) (hy : IsRounded fmt (.finite s₂ m₂ e₂ hm₂)) :
+    (toUnboundedFloat (.mul fmt (.finite s m e hm) (.finite s₂ m₂ e₂ hm₂)) : UnboundedFloat fmt') =
+      .roundNNReal (ofSign s * ofSign s₂) ((m * 2 ^ e) * (m₂ * 2 ^ e₂)) := by
+  cases HasCommonOfFormat.elim fmt
+  cases HasCommonOfFloatFormat.elim fmt'
+  rw [UnpackedFloat.mul, toUnboundedFloat_roundWithAccuracy (f := 0) _ (.exact rfl)]
+  · simp [mul_assoc, mul_left_comm, zpow_add₀]
+  · rcases hx with _ | _ | _ | ⟨-, hx⟩
+    rcases hy with _ | _ | _ | ⟨-, hy⟩
+    have := Nat.log2_add_log2_le_log2_mul hm.ne' hm₂.ne'
+    simp +zetaDelta only [Format.targetExponent, totalExponent, Format.mantissaBits, Nat.cast_add,
+      Nat.cast_one, Format.minExponent, le_sup_iff] at *
+    have : 0 < 2 ^ (common.ebits - 1) := by simp
+    lia
+
 lemma toUnboundedFloat_mul {fmt fmt' common}
     [HasCommonOfFormat fmt common] [HasCommonOfFloatFormat fmt' common]
     {x y : UnpackedFloat}
@@ -91,17 +110,8 @@ lemma toUnboundedFloat_mul {fmt fmt' common}
       UnboundedFloat.roundNNReal_eq_ofValidNNReal]
   · simp_all -implicitDefEqProofs [UnboundedFloat.ofValidNNReal_mul_ofValidNNReal,
       UnboundedFloat.roundNNReal_eq_ofValidNNReal]
-  · rename_i s m e hm s₂ m₂ e₂ hm₂
-    rw [toUnboundedFloat_roundWithAccuracy (f := 0) _ (.exact rfl)]
-    · simp [toUnboundedFloat_finite_of_isRounded, UnboundedFloat.ofValidNNReal_mul_ofValidNNReal,
-        zpow_add₀, mul_assoc, mul_left_comm, *]
-    · rcases hx with _ | _ | _ | ⟨-, hx⟩
-      rcases hy with _ | _ | _ | ⟨-, hy⟩
-      have := Nat.log2_add_log2_le_log2_mul hm.ne' hm₂.ne'
-      simp +zetaDelta only [Format.targetExponent, totalExponent, Format.mantissaBits, Nat.cast_add,
-        Nat.cast_one, Format.minExponent, le_sup_iff] at *
-      have : 0 < 2 ^ (common.ebits - 1) := by simp
-      lia
+  · simpa [toUnboundedFloat_finite_of_isRounded, UnboundedFloat.ofValidNNReal_mul_ofValidNNReal, UnpackedFloat.mul, *]
+      using toUnboundedFloat_mul_finite hx hy
 
 lemma isRounded_mul {fmt common} [HasCommonOfFormat fmt common] {x y : UnpackedFloat}
     (hx : IsRounded fmt x) (hy : IsRounded fmt y) : IsRounded fmt (.mul fmt x y) := by
@@ -151,6 +161,20 @@ lemma divCore_spec {m₁ m₂ : ℕ} {e₁ e₂ : ℤ} {mant exp acc} (hm₁ : 0
     have : target ≤ e₁ - e₂ := by simp [target]
     simp [sub_div, hm₂.ne', shifted, shift, Nat.shiftLeft_eq, ← zpow_natCast,
       this, zpow_sub₀, ← div_div, div_right_comm, ← mul_div_assoc]
+
+-- we need this for ofScientific
+lemma toUnboundedFloat_div_finite {fmt fmt' common}
+    [HasCommonOfFormat fmt common] [HasCommonOfFloatFormat fmt' common] {s m e hm s₂ m₂ e₂ hm₂} :
+    (toUnboundedFloat (.div fmt (.finite s m e hm) (.finite s₂ m₂ e₂ hm₂)) : UnboundedFloat fmt') =
+      .roundNNReal (ofSign s * ofSign s₂) ((m * 2 ^ e) / (m₂ * 2 ^ e₂)) := by
+  cases HasCommonOfFormat.elim fmt
+  cases HasCommonOfFloatFormat.elim fmt'
+  rw [UnpackedFloat.div]
+  split
+  rename_i m' e' acc' h
+  have ⟨h₁, h₂⟩ := divCore_spec hm hm₂ h
+  rw [toUnboundedFloat_roundWithAccuracy (f := NNReal.mk _ h₂.nonneg) h₁ h₂]
+  simp [UnboundedFloat.roundNNReal_eq_roundReal, *]
 
 lemma toUnboundedFloat_div {fmt fmt' common}
     [HasCommonOfFormat fmt common] [HasCommonOfFloatFormat fmt' common]
@@ -461,6 +485,28 @@ lemma toISize_eq {fmt common} [HasCommonOfFormat fmt common]
       (le_trans (ISize.toInt_le_int64MaxValue _) (Nat.cast_le.mpr hp))
       (le_trans hn (ISize.int64MinValue_le_toInt _))
 
+@[simp]
+lemma toUnboundedFloat_ofInt {fmt fmt' common} [HasCommonOfFormat fmt common]
+    [HasCommonOfFloatFormat fmt' common] (n : ℤ) :
+    toUnboundedFloat (UnpackedFloat.ofInt fmt n) = (UnboundedFloat.roundReal n : UnboundedFloat fmt') := by
+  cases HasCommonOfFormat.elim fmt
+  cases HasCommonOfFloatFormat.elim fmt'
+  simp [UnpackedFloat.ofInt]
+
+@[simp]
+lemma toUnboundedFloat_ofNat {fmt fmt' common} [HasCommonOfFormat fmt common]
+    [HasCommonOfFloatFormat fmt' common] (n : ℕ) :
+    toUnboundedFloat (UnpackedFloat.ofNat fmt n) = (UnboundedFloat.roundReal n : UnboundedFloat fmt') := by
+  simp [UnpackedFloat.ofNat]
+
+@[simp]
+lemma isRounded_ofInt {fmt} (n : ℤ) : IsRounded fmt (UnpackedFloat.ofInt fmt n) := by
+  simp [UnpackedFloat.ofInt]
+
+@[simp]
+lemma isRounded_ofNat {fmt} (n : ℕ) : IsRounded fmt (UnpackedFloat.ofNat fmt n) := by
+  simp [UnpackedFloat.ofNat]
+
 end UnpackedFloat
 
 lemma UnpackedFloat.CommonFormat.toFloatFormat_binary64 :
@@ -475,21 +521,27 @@ lemma UnpackedFloat.CommonFormat.toFormat_binary64 :
 lemma UnpackedFloat.CommonFormat.toFormat_binary32 :
     toFloatFormat .binary32 = .binary32 := rfl
 
+@[expose]
 noncomputable def RealFloat.ofFloat (f : Float) : RealFloat .binary64 :=
   ofUnbounded (UnpackedFloat.toUnboundedFloat (fmt := .binary64) f.toModel.unpack)
 
+@[expose]
 noncomputable def RealFloat.ofFloat32 (f : Float32) : RealFloat .binary32 :=
   ofUnbounded (UnpackedFloat.toUnboundedFloat (fmt := .binary32) f.toModel.unpack)
 
+@[expose]
 noncomputable def RealFloat.ofFloatModel (f : Float.Model) : RealFloat .binary64 :=
   ofUnbounded (UnpackedFloat.toUnboundedFloat (fmt := .binary64) f.unpack)
 
+@[expose]
 noncomputable def RealFloat.ofFloat32Model (f : Float32.Model) : RealFloat .binary32 :=
   ofUnbounded (UnpackedFloat.toUnboundedFloat (fmt := .binary32) f.unpack)
 
+@[expose]
 noncomputable def RealFloat.toFloat (f : RealFloat .binary64) : Float :=
   .ofModel <| .pack (UnpackedFloat.ofUnboundedFloat (fmt := .binary64) f.toUnbounded)
 
+@[expose]
 noncomputable def RealFloat.toFloat32 (f : RealFloat .binary32) : Float32 :=
   .ofModel <| .pack (UnpackedFloat.ofUnboundedFloat (fmt := .binary32) f.toUnbounded)
 
@@ -877,5 +929,189 @@ lemma RealFloat.float32ToISize_eq (a : Float32.Model) :
     a.toISize = ISize.ofIntClamp (RoundingFunction.towardsZero (ofFloat32Model a).toReal) := by
   simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.toISize,
     UnpackedFloat.toISize_eq (fmt := .binary32)]
+
+@[simp]
+lemma RealFloat.ofFloat_ofUInt8 (x : UInt8) :
+    ofFloat x.toFloat = roundReal x.toNat := by
+  simp [UInt8.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofUInt8,
+    Float.Model.UnpackedFloat.ofUInt8, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofUInt8 (x : UInt8) :
+    ofFloat32 x.toFloat32 = roundReal x.toNat := by
+  simp [UInt8.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofUInt8,
+    Float.Model.UnpackedFloat.ofUInt8, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofUInt16 (x : UInt16) :
+    ofFloat x.toFloat = roundReal x.toNat := by
+  simp [UInt16.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofUInt16,
+    Float.Model.UnpackedFloat.ofUInt16, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofUInt16 (x : UInt16) :
+    ofFloat32 x.toFloat32 = roundReal x.toNat := by
+  simp [UInt16.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofUInt16,
+    Float.Model.UnpackedFloat.ofUInt16, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofUInt32 (x : UInt32) :
+    ofFloat x.toFloat = roundReal x.toNat := by
+  simp [UInt32.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofUInt32,
+    Float.Model.UnpackedFloat.ofUInt32, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofUInt32 (x : UInt32) :
+    ofFloat32 x.toFloat32 = roundReal x.toNat := by
+  simp [UInt32.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofUInt32,
+    Float.Model.UnpackedFloat.ofUInt32, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofUInt64 (x : UInt64) :
+    ofFloat x.toFloat = roundReal x.toNat := by
+  simp [UInt64.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofUInt64,
+    Float.Model.UnpackedFloat.ofUInt64, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofUInt64 (x : UInt64) :
+    ofFloat32 x.toFloat32 = roundReal x.toNat := by
+  simp [UInt64.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofUInt64,
+    Float.Model.UnpackedFloat.ofUInt64, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofUSize (x : USize) :
+    ofFloat x.toFloat = roundReal x.toNat := by
+  simp [USize.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofUSize,
+    Float.Model.UnpackedFloat.ofUSize, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofUSize (x : USize) :
+    ofFloat32 x.toFloat32 = roundReal x.toNat := by
+  simp [USize.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofUSize,
+    Float.Model.UnpackedFloat.ofUSize, Float32.Model.pack]
+
+-- these are opaque?
+
+/-
+@[simp]
+lemma RealFloat.ofFloat_ofInt8 (x : Int8) :
+    ofFloat x.toFloat = roundReal x.toInt := by
+  simp [Int8.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofInt8,
+    Float.Model.UnpackedFloat.ofInt8, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofInt8 (x : Int8) :
+    ofFloat32 x.toFloat32 = roundReal x.toInt := by
+  simp [Int8.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofInt8,
+    Float.Model.UnpackedFloat.ofInt8, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofInt16 (x : Int16) :
+    ofFloat x.toFloat = roundReal x.toInt := by
+  simp [Int16.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofInt16,
+    Float.Model.UnpackedFloat.ofInt16, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofInt16 (x : Int16) :
+    ofFloat32 x.toFloat32 = roundReal x.toInt := by
+  simp [Int16.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofInt16,
+    Float.Model.UnpackedFloat.ofInt16, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofInt32 (x : Int32) :
+    ofFloat x.toFloat = roundReal x.toInt := by
+  simp [Int32.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofInt32,
+    Float.Model.UnpackedFloat.ofInt32, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofInt32 (x : Int32) :
+    ofFloat32 x.toFloat32 = roundReal x.toInt := by
+  simp [Int32.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofInt32,
+    Float.Model.UnpackedFloat.ofInt32, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofInt64 (x : Int64) :
+    ofFloat x.toFloat = roundReal x.toInt := by
+  simp [Int64.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofInt64,
+    Float.Model.UnpackedFloat.ofInt64, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofInt64 (x : Int64) :
+    ofFloat32 x.toFloat32 = roundReal x.toInt := by
+  simp [Int64.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofInt64,
+    Float.Model.UnpackedFloat.ofInt64, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofISize (x : ISize) :
+    ofFloat x.toFloat = roundReal x.toInt := by
+  simp [ISize.toFloat, ofFloat, Float.Model.unpack, Float.Model.ofISize,
+    Float.Model.UnpackedFloat.ofISize, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofISize (x : ISize) :
+    ofFloat32 x.toFloat32 = roundReal x.toInt := by
+  simp [ISize.toFloat32, ofFloat32, Float32.Model.unpack, Float32.Model.ofISize,
+    Float.Model.UnpackedFloat.ofISize, Float32.Model.pack]
+-/
+
+@[simp]
+lemma RealFloat.ofFloat_ofInt8 (x : Int8) :
+    ofFloatModel (.ofInt8 x) = roundReal x.toInt := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.ofInt8,
+    Float.Model.UnpackedFloat.ofInt8, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofInt8 (x : Int8) :
+    ofFloat32Model (.ofInt8 x) = roundReal x.toInt := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.ofInt8,
+    Float.Model.UnpackedFloat.ofInt8, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofInt16 (x : Int16) :
+    ofFloatModel (.ofInt16 x) = roundReal x.toInt := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.ofInt16,
+    Float.Model.UnpackedFloat.ofInt16, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofInt16 (x : Int16) :
+    ofFloat32Model (.ofInt16 x) = roundReal x.toInt := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.ofInt16,
+    Float.Model.UnpackedFloat.ofInt16, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofInt32 (x : Int32) :
+    ofFloatModel (.ofInt32 x) = roundReal x.toInt := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.ofInt32,
+    Float.Model.UnpackedFloat.ofInt32, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofInt32 (x : Int32) :
+    ofFloat32Model (.ofInt32 x) = roundReal x.toInt := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.ofInt32,
+    Float.Model.UnpackedFloat.ofInt32, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofInt64 (x : Int64) :
+    ofFloatModel (.ofInt64 x) = roundReal x.toInt := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.ofInt64,
+    Float.Model.UnpackedFloat.ofInt64, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofInt64 (x : Int64) :
+    ofFloat32Model (.ofInt64 x) = roundReal x.toInt := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.ofInt64,
+    Float.Model.UnpackedFloat.ofInt64, Float32.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat_ofISizeModel (x : ISize) :
+    ofFloatModel (.ofISize x) = roundReal x.toInt := by
+  simp [ofFloatModel, Float.Model.unpack, Float.Model.ofISize,
+    Float.Model.UnpackedFloat.ofISize, Float.Model.pack]
+
+@[simp]
+lemma RealFloat.ofFloat32_ofISizeModel (x : ISize) :
+    ofFloat32Model (.ofISize x) = roundReal x.toInt := by
+  simp [ofFloat32Model, Float32.Model.unpack, Float32.Model.ofISize,
+    Float.Model.UnpackedFloat.ofISize, Float32.Model.pack]
 
 end LeanFloats

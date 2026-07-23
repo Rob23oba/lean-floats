@@ -473,3 +473,20 @@ lemma ISize.toInt_ofIntClamp_eq_max (n : Int) :
     dite_eq_ite]
   have : 0 < 2 ^ (System.Platform.numBits - 1) := Nat.two_pow_pos _
   grind
+
+@[to_additive]
+lemma zpow_le_zpow_left_of_nonpos {α : Type*} [CommGroup α]
+    [PartialOrder α] [IsOrderedMonoid α] {n : ℤ} {a b : α} (hn : n ≤ 0)
+    (h : a ≤ b) : b ^ n ≤ a ^ n := by
+  rw [← neg_neg n, zpow_neg a, zpow_neg b]
+  grw [h]
+  rwa [neg_nonneg]
+
+lemma zpow_le_zpow_left_of_nonpos₀ {α : Type*} [GroupWithZero α]
+    [PartialOrder α] [PosMulReflectLT α] [MulPosReflectLT α] [MulPosMono α]
+    [ZeroLEOneClass α]
+    {n : ℤ} {a b : α} (hn : n ≤ 0) (ha : 0 < a) (h : a ≤ b) :
+    b ^ n ≤ a ^ n := by
+  rw [← neg_neg n, zpow_neg a, zpow_neg b]
+  apply inv_anti₀ (zpow_pos ha (-n))
+  exact zpow_le_zpow_left₀ (by simpa) ha.le h

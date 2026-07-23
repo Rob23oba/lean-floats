@@ -159,6 +159,10 @@ lemma toEReal_ofValidReal (x : ℝ) (h : fmt.IsValidFloat x) (zs : SimpleSign) :
 lemma ofValidReal_def (x : ℝ) (h : fmt.IsValidFloat x) (zs : SimpleSign) :
     ofValidReal x h zs = ofValidNNReal (.ofValue x zs) x.nnabs (by simpa using h.abs) := (rfl)
 
+lemma ofValidNNReal_eq_ofValidReal (s : SimpleSign) (x : NNReal) (h : fmt.IsValidFloat x) :
+    ofValidNNReal s x h = ofValidReal (s * x) (by simpa using h.abs) s := by
+  simp [ofValidReal_def, SimpleSign.ofValue_coe_mul_eq_self]
+
 @[simp]
 lemma ofValidEReal_top (zs : SimpleSign) :
     (ofValidEReal ⊤ (by simp) zs : RealFloat fmt) = .infinity 1 := rfl

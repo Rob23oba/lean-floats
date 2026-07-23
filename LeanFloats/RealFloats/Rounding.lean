@@ -110,7 +110,11 @@ lemma ofUnbounded_ofValidEReal {x : EReal} (h : fmt.IsRounded x.toReal) {zs : Si
   simp [ofUnbounded]
 
 lemma ofUnbounded_eq_ofUnboundedInRange {x : UnboundedFloat fmt}
-    (h : fmt.InRange x.toFiniteReal) : ofUnbounded x = ofUnboundedInRange x h := by
+    (h : fmt.InRange x.toFiniteReal) : ofUnbounded x round = ofUnboundedInRange x h := by
+  simp [ofUnbounded, h]
+
+lemma ofUnbounded_eq_overflowValue {x : UnboundedFloat fmt}
+    (h : ¬ fmt.InRange x.toFiniteReal) : ofUnbounded x round = overflowValue (.ofValue x.sign) round := by
   simp [ofUnbounded, h]
 
 @[simp, norm_cast]
@@ -320,6 +324,23 @@ lemma roundReal_eq_ofValidNNReal_pos {x : NNReal} (h : fmt.IsValidFloat x) :
 lemma roundReal_eq_ofValidNNReal_neg {x : NNReal} (h : fmt.IsValidFloat x) :
     roundReal (-x) (-1) round = ofValidNNReal (-1) x h := by
   simpa using roundReal_eq_ofValidNNReal h (-1)
+
+lemma roundReal_of_ge_base_pow_infExp {x : ℝ} {zs : SimpleSign}
+    {round : RoundingFunction} (h : base ^ fmt.infExp ≤ x) :
+    roundReal x zs round = (overflowValue 1 round : RealFloat fmt) := by
+  simp only [← ofUnbounded_roundReal]
+  have hx : 0 < x := lt_of_lt_of_le (by simp) h
+  rw [ofUnbounded_eq_overflowValue]
+  · simp [SimpleSign.ofValue_of_pos hx]
+  · rw [UnboundedFloat.toFiniteReal_roundReal]
+    simp only [fmt.inRange_iff, abs_mul, abs_zpow, Nat.abs_cast, not_lt]
+    rw [abs_of_nonneg (by positivity)]
+    grw [← FloatFormat.round_mono h, FloatFormat.round_eq_self (by simp)]
+
+@[simp]
+lemma roundReal_base_pow_infExp (zs : SimpleSign) (round : RoundingFunction) :
+    roundReal (base ^ fmt.infExp) zs round = (overflowValue 1 round : RealFloat fmt) := by
+  simp [roundReal_of_ge_base_pow_infExp]
 
 instance {n : Nat} : OfNat (RealFloat fmt) n where
   ofNat := roundReal n

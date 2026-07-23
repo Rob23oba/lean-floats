@@ -124,6 +124,39 @@ lemma isValidFloat_natCast {n : ℕ} (h : n ≤ base ^ f.precision) : f.IsValidF
     grw [Nat.abs_cast, h, Nat.cast_pow, f.precision_lt_infExp]
     simp
 
+@[simp]
+lemma isRounded_base_zpow_iff {n : ℤ} : f.IsRounded (base ^ n) ↔ f.minExp ≤ n := by
+  constructor
+  · intro ⟨e, m, he, hm, heq⟩
+    rw [← div_eq_iff (by simp), ← zpow_sub₀ (by simp)] at heq
+    have : 0 < (m : ℝ) := by simp [← heq]
+    replace : 1 ≤ (m : ℝ) := by norm_cast at this; norm_cast
+    simp [← heq] at this
+    lia
+  · intro h
+    exact .intro n 1 h (by simp) (by simp)
+
+@[simp]
+lemma isRounded_base_pow {n : ℕ} : f.IsRounded (base ^ n) := by
+  rw [← zpow_natCast, isRounded_base_zpow_iff]
+  grind
+
+@[simp]
+lemma inRange_base_zpow_iff {n : ℤ} : f.InRange (base ^ n) ↔ n < f.infExp := by
+  simp [inRange_iff, ← zpow_natCast]
+
+@[simp]
+lemma inRange_base_pow_iff {n : ℕ} : f.InRange (base ^ n) ↔ n < f.infExp := by
+  simp [inRange_iff, ← zpow_natCast]
+
+@[simp]
+lemma isValidFloat_base_zpow_iff {n : ℤ} : f.IsValidFloat (base ^ n) ↔ f.minExp ≤ n ∧ n < f.infExp := by
+  simp [isValidFloat_iff]
+
+@[simp]
+lemma isValidFloat_base_pow_iff {n : ℕ} : f.IsValidFloat (base ^ n) ↔ n < f.infExp := by
+  simp [isValidFloat_iff]
+
 lemma IsRounded.neg {x : ℝ} (h : f.IsRounded x) :
     f.IsRounded (-x) := by
   obtain ⟨e, i, he, hi, rfl⟩ := h
@@ -406,9 +439,14 @@ lemma round_mono {round : RoundingFunction} {x y : ℝ} (h : x ≤ y) :
     · simp only [hexp, Nat.cast_pos, Base.value_pos, zpow_pos, mul_le_mul_iff_left₀, ge_iff_le]
       grw [h]
 
-lemma isRounded_mul_base_pow_of_getExponent {m : ℕ} {e : ℤ} (h : f.getExponent (m * base ^ e) = e) :
+lemma round_eq_self {round : RoundingFunction} {x : ℝ} (h : f.IsRounded x) :
+    (round (x / base ^ f.getExponent x) * base ^ f.getExponent x : ℝ) = x := by
+  nth_rw 1 [← h.getMantissa_mul_base_pow_getExponent]
+  simpa using h.getMantissa_mul_base_pow_getExponent
+
+lemma isRounded_mul_base_pow_of_getExponent {m : ℕ} {e : ℤ} (h : f.getExponent (m * base ^ e) ≤ e) :
     f.IsRounded (m * base ^ e) := by
-  obtain ⟨h₁, h₂⟩ := getExponent_le_iff.mp h.le
+  obtain ⟨h₁, h₂⟩ := getExponent_le_iff.mp h
   simp only [mul_comm _ (base ^ e : ℝ), abs_mul, abs_zpow, Nat.abs_cast, ne_eq, Nat.cast_eq_zero,
     Base.value_ne_zero, not_false_eq_true, zpow_add₀, zpow_natCast, Nat.cast_pos, Base.value_pos,
     zpow_pos, mul_lt_mul_iff_right₀] at h₁
@@ -418,7 +456,7 @@ lemma isRounded_mul_base_pow_of_getExponent {m : ℕ} {e : ℤ} (h : f.getExpone
 
 lemma getMantissa_mul_base_pow {m : ℕ} {e : ℤ} (h : f.getExponent (m * base ^ e) = e) :
     f.getMantissa (m * base ^ e) = m := by
-  rify; simpa [h] using (isRounded_mul_base_pow_of_getExponent h).getMantissa_mul_base_pow_getExponent
+  rify; simpa [h] using (isRounded_mul_base_pow_of_getExponent h.le).getMantissa_mul_base_pow_getExponent
 
 @[simp]
 lemma IsRounded.getMantissa_eq_zero_iff {x : ℝ} (h : IsRounded f x) :

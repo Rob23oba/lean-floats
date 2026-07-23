@@ -140,7 +140,7 @@ lemma roundReal_eq_ofValidNNReal_neg {x : NNReal} (h : fmt.IsRounded x) :
 instance {n : Nat} : OfNat (UnboundedFloat fmt) n where
   ofNat := roundReal n
 
-lemma ofNat_eq_roundReal_tiesToEven (n : ℕ) : (ofNat(n) : UnboundedFloat fmt) = roundReal n := (rfl)
+lemma ofNat_eq_roundReal_tiesToEven (n : ℕ) : (ofNat(n) : UnboundedFloat fmt) = roundReal (ofNat(n) : ℕ) := (rfl)
 
 lemma roundReal_natCast_eq_of_le {n : ℕ} (hle : (n : ℕ) ≤ base ^ fmt.precision) :
     (roundReal n : UnboundedFloat fmt) = .ofValidNNReal 1 n (fmt.isRounded_natCast hle) := by
