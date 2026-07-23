@@ -1,5 +1,5 @@
 module
-public import LeanFloats.RealFloats.Rounding
+public import LeanFloats.RealFloat.Rounding
 public import LeanFloats.UnpackedFloat.FormatTrivial
 
 @[expose] public section

@@ -1,5 +1,5 @@
 module
-public import LeanFloats.RealFloats.Basic
+public import LeanFloats.RealFloat.Basic
 public import LeanFloats.UnboundedFloat.Rounding
 public import LeanFloats.RoundingFunction
 public import Mathlib.Analysis.Real.Sqrt
